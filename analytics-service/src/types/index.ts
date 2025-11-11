@@ -1,0 +1,134 @@
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  facilityId?: string;
+  permissions: Permission[];
+}
+
+export enum UserRole {
+  ADMIN = 'admin',
+  RECRUITER = 'recruiter',
+  VIEWER = 'viewer'
+}
+
+export enum Permission {
+  VIEW_ANALYTICS = 'view_analytics',
+  VIEW_FACILITY_ANALYTICS = 'view_facility_analytics',
+  MANAGE_ANALYTICS = 'manage_analytics',
+  VIEW_PII = 'view_pii'
+}
+
+export interface AnalyticsKPI {
+  pipelineCount: number;
+  timeToFill: number;
+  complianceStatus: ComplianceMetrics;
+  revenue: RevenueMetrics;
+  outreachEffectiveness: OutreachMetrics;
+}
+
+export interface ComplianceMetrics {
+  totalApplications: number;
+  compliantApplications: number;
+  complianceRate: number;
+  violations: ComplianceViolation[];
+}
+
+export interface ComplianceViolation {
+  type: string;
+  count: number;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface RevenueMetrics {
+  totalRevenue: number;
+  averageRevenuePerPlacement: number;
+  revenueByFacility: FacilityRevenue[];
+  revenueByMonth: MonthlyRevenue[];
+}
+
+export interface FacilityRevenue {
+  facilityId: string;
+  facilityName: string;
+  revenue: number;
+}
+
+export interface MonthlyRevenue {
+  month: string;
+  revenue: number;
+}
+
+export interface OutreachMetrics {
+  totalOutreach: number;
+  responseRate: number;
+  conversionRate: number;
+  effectiveChannels: ChannelMetrics[];
+}
+
+export interface ChannelMetrics {
+  channel: string;
+  outreach: number;
+  responses: number;
+  conversions: number;
+}
+
+export interface AnalyticsQuery {
+  startDate?: string;
+  endDate?: string;
+  facilityId?: string;
+  includePII?: boolean;
+}
+
+export interface CacheOptions {
+  ttl?: number;
+  key: string;
+}
+
+export interface JobData {
+  type: 'refresh_analytics' | 'refresh_view';
+  viewName?: string;
+  facilityId?: string;
+}
+
+export interface JobResult {
+  success: boolean;
+  message: string;
+  data?: any;
+  error?: string;
+}
+
+export interface DatabaseConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl?: boolean;
+}
+
+export interface RedisConfig {
+  host: string;
+  port: number;
+  password?: string;
+  db?: number;
+}
+
+export interface AppConfig {
+  database: DatabaseConfig;
+  redis: RedisConfig;
+  jwt: {
+    secret: string;
+    expiresIn: string;
+  };
+  hipaa: {
+    enabled: boolean;
+    minThreshold: number;
+  };
+  analytics: {
+    refreshInterval: number;
+    cacheTTL: number;
+  };
+  port?: number;
+  apiVersion?: string;
+  nodeEnv?: string;
+}

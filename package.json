@@ -1,0 +1,25 @@
+{
+  "name": "bi-agent",
+  "version": "1.0.0",
+  "description": "BI-Agent - Analytics and Business Intelligence Platform",
+  "private": true,
+  "workspaces": [
+    "analytics-service"
+  ],
+  "scripts": {
+    "install:all": "pnpm install",
+    "dev": "pnpm --filter bi-agent-analytics dev",
+    "build": "pnpm --filter bi-agent-analytics build",
+    "start": "pnpm --filter bi-agent-analytics start",
+    "test": "pnpm --filter bi-agent-analytics test",
+    "analytics:run": "pnpm --filter bi-agent-analytics analytics:run",
+    "analytics:test": "pnpm --filter bi-agent-analytics analytics:test",
+    "setup": "chmod +x jobs/setup.sh && jobs/setup.sh",
+    "setup:full": "jobs/setup.sh --with-sample-data --with-dbt --with-tests"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.10.0"
+}

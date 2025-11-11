@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # Analytics Backend Application
+  analytics-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: analytics-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/analytics_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - HIPAA_MODE=true
+      - HIPAA_MIN_THRESHOLD=5
+      - ANALYTICS_CACHE_TTL=300
+      - ANALYTICS_REFRESH_INTERVAL=3600000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - analytics-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: analytics-postgres
+    environment:
+      - POSTGRES_DB=analytics_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./analytics/sql:/docker-entrypoint-initdb.d:ro
+    networks:
+      - analytics-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d analytics_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: analytics-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ""
+    volumes:
+      - redis_data:/data
+    networks:
+      - analytics-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: dbt for analytics transformations
+  dbt:
+    image: python:3.9-slim
+    container_name: analytics-dbt
+    environment:
+      - DBT_USER=postgres
+      - DBT_PASSWORD=password
+      - DBT_DATABASE=analytics_db
+      - DBT_HOST=postgres
+      - DBT_PORT=5432
+    volumes:
+      - ./analytics/dbt:/usr/app/dbt
+      - dbt_logs:/usr/app/logs
+    working_dir: /usr/app/dbt
+    command: >
+      sh -c "
+        pip install dbt-postgres &&
+        tail -f /dev/null
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - analytics-network
+    profiles:
+      - dbt
+
+  # Optional: Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: analytics-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - analytics-network
+    profiles:
+      - tools
+
+  # Optional: pgAdmin for PostgreSQL management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: analytics-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - analytics-network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  dbt_logs:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  analytics-network:
+    driver: bridge
