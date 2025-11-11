@@ -1,0 +1,107 @@
+{% macro source_definitions() %}
+{% raw %}
+{% endraw %}
+{% endmacro %}
+
+version: 2
+
+sources:
+  - name: raw
+    database: analytics_db
+    schema: public
+    tables:
+      - name: applications
+        description: Raw application data from the main application database
+        columns:
+          - name: id
+            description: Primary key for applications
+            tests:
+              - unique
+              - not_null
+          - name: facility_id
+            description: Foreign key to facilities table
+          - name: candidate_id
+            description: Foreign key to candidates table
+          - name: status
+            description: Current status of the application
+          - name: created_at
+            description: Timestamp when application was created
+          - name: updated_at
+            description: Timestamp when application was last updated
+          - name: hired_at
+            description: Timestamp when candidate was hired
+          - name: compliance_score
+            description: Compliance score (0-100)
+          - name: has_violations
+            description: Boolean flag indicating compliance violations
+
+      - name: invoices
+        description: Raw invoice data from the billing system
+        columns:
+          - name: id
+            description: Primary key for invoices
+            tests:
+              - unique
+              - not_null
+          - name: facility_id
+            description: Foreign key to facilities table
+          - name: application_id
+            description: Foreign key to applications table
+          - name: amount
+            description: Invoice amount
+          - name: status
+            description: Invoice status (paid, pending, cancelled)
+          - name: created_at
+            description: Timestamp when invoice was created
+          - name: updated_at
+            description: Timestamp when invoice was last updated
+          - name: paid_at
+            description: Timestamp when invoice was paid
+
+      - name: outreach
+        description: Raw outreach data from the recruitment system
+        columns:
+          - name: id
+            description: Primary key for outreach records
+            tests:
+              - unique
+              - not_null
+          - name: facility_id
+            description: Foreign key to facilities table
+          - name: candidate_id
+            description: Foreign key to candidates table
+          - name: channel
+            description: Outreach channel (email, phone, social, etc.)
+          - name: message
+            description: Outreach message content
+          - name: sent_at
+            description: Timestamp when outreach was sent
+          - name: response_received
+            description: Boolean flag indicating if response was received
+          - name: responded_at
+            description: Timestamp when response was received
+          - name: converted
+            description: Boolean flag indicating if outreach led to conversion
+          - name: created_at
+            description: Timestamp when record was created
+          - name: updated_at
+            description: Timestamp when record was last updated
+
+      - name: facilities
+        description: Raw facility data
+        columns:
+          - name: id
+            description: Primary key for facilities
+            tests:
+              - unique
+              - not_null
+          - name: name
+            description: Facility name
+          - name: type
+            description: Facility type
+          - name: location
+            description: Facility location
+          - name: created_at
+            description: Timestamp when facility was created
+          - name: updated_at
+            description: Timestamp when facility was last updated
