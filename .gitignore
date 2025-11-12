@@ -48,6 +48,8 @@ dbt/logs/
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # Temporary files
 tmp/
