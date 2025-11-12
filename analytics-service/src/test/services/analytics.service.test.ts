@@ -2,40 +2,100 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { analyticsService } from '../../services/analytics.service';
 import { mockAdminUser, mockRecruiterUser, mockPipelineKPIs } from '../setup';
 
-// Mock modules
-jest.mock('../../config/database');
-jest.mock('../../config/redis');
+type RedisInnerClientMock = {
+  keys: jest.MockedFunction<(pattern: string) => Promise<string[]>>;
+  del: jest.MockedFunction<(...keys: string[]) => Promise<number>>;
+};
+
+type RedisClientMock = {
+  get: jest.MockedFunction<(key: string) => Promise<unknown>>;
+  set: jest.MockedFunction<(key: string, value: unknown, ttl?: number) => Promise<void>>;
+  del: jest.MockedFunction<(key: string) => Promise<void>>;
+  exists: jest.MockedFunction<(key: string) => Promise<boolean>>;
+  flush: jest.MockedFunction<() => Promise<void>>;
+  getClient: jest.MockedFunction<() => RedisInnerClientMock>;
+  healthCheck: jest.MockedFunction<() => Promise<boolean>>;
+  close: jest.MockedFunction<() => Promise<void>>;
+};
+
+type DatabaseMock = {
+  query: jest.MockedFunction<(text: string, params?: any[]) => Promise<any[]>>;
+  queryOne: jest.MockedFunction<(text: string, params?: any[]) => Promise<any | null>>;
+  getClient: jest.MockedFunction<() => unknown>;
+  transaction: jest.MockedFunction<(callback: any) => Promise<unknown>>;
+  close: jest.MockedFunction<() => Promise<void>>;
+  healthCheck: jest.MockedFunction<() => Promise<boolean>>;
+};
+
+const mockRedisClient: RedisInnerClientMock = {
+  keys: jest.fn() as jest.MockedFunction<(pattern: string) => Promise<string[]>>,
+  del: jest.fn() as jest.MockedFunction<(...keys: string[]) => Promise<number>>,
+};
+
+const mockRedis: RedisClientMock = {
+  get: jest.fn() as jest.MockedFunction<(key: string) => Promise<unknown>>,
+  set: jest.fn() as jest.MockedFunction<(key: string, value: unknown, ttl?: number) => Promise<void>>,
+  del: jest.fn() as jest.MockedFunction<(key: string) => Promise<void>>,
+  exists: jest.fn() as jest.MockedFunction<(key: string) => Promise<boolean>>,
+  flush: jest.fn() as jest.MockedFunction<() => Promise<void>>,
+  getClient: jest.fn() as jest.MockedFunction<() => RedisInnerClientMock>,
+  healthCheck: jest.fn() as jest.MockedFunction<() => Promise<boolean>>,
+  close: jest.fn() as jest.MockedFunction<() => Promise<void>>,
+};
+
+const mockDb: DatabaseMock = {
+  query: jest.fn() as jest.MockedFunction<(text: string, params?: any[]) => Promise<any[]>>,
+  queryOne: jest.fn() as jest.MockedFunction<(text: string, params?: any[]) => Promise<any | null>>,
+  getClient: jest.fn() as jest.MockedFunction<() => unknown>,
+  transaction: jest.fn() as jest.MockedFunction<(callback: any) => Promise<unknown>>,
+  close: jest.fn() as jest.MockedFunction<() => Promise<void>>,
+  healthCheck: jest.fn() as jest.MockedFunction<() => Promise<boolean>>,
+};
+
+jest.mock('../../config/redis', () => ({
+  __esModule: true,
+  get redis() {
+    return mockRedis;
+  },
+  get default() {
+    return mockRedis;
+  },
+}));
+
+jest.mock('../../config/database', () => ({
+  __esModule: true,
+  get db() {
+    return mockDb;
+  },
+  get default() {
+    return mockDb;
+  },
+}));
 
 describe('AnalyticsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Mock Redis methods
-    const mockRedis = {
-      get: jest.fn().mockResolvedValue(null),
-      set: jest.fn().mockResolvedValue(),
-      getClient: jest.fn().mockReturnValue({
-        keys: jest.fn().mockResolvedValue([]),
-        del: jest.fn().mockResolvedValue(0),
-      }),
-    } as any;
-    
-    // Mock database
-    const mockDb = {
-      query: jest.fn().mockResolvedValue([]),
-      queryOne: jest.fn().mockResolvedValue(null),
-    } as any;
-    
-    // Replace the actual modules with mocks
-    jest.doMock('../../config/redis', () => mockRedis);
-    jest.doMock('../../config/database', () => mockDb);
+
+    mockRedis.getClient.mockReturnValue(mockRedisClient);
+    mockRedis.get.mockResolvedValue(null);
+    mockRedis.set.mockResolvedValue(undefined);
+    mockRedis.exists.mockResolvedValue(false);
+    mockRedis.flush.mockResolvedValue(undefined);
+    mockRedis.del.mockResolvedValue(undefined);
+    mockRedis.healthCheck.mockResolvedValue(true);
+    mockRedis.close.mockResolvedValue(undefined);
+
+    mockRedisClient.keys.mockResolvedValue([]);
+    mockRedisClient.del.mockResolvedValue(0);
+
+    mockDb.query.mockResolvedValue([]);
+    mockDb.queryOne.mockResolvedValue(null);
   });
 
   describe('getPipelineKPIs', () => {
     it('should return pipeline KPIs for admin user', async () => {
       // Arrange
       const query = { startDate: '2023-01-01', endDate: '2023-12-31' };
-      const mockDb = require('../../config/database').db;
       mockDb.query.mockResolvedValue(mockPipelineKPIs);
 
       // Act
@@ -53,7 +113,6 @@ describe('AnalyticsService', () => {
       // Arrange
       const query = { startDate: '2023-01-01', endDate: '2023-12-31' };
       const facilityFilteredKPIs = [mockPipelineKPIs[0]];
-      const mockDb = require('../../config/database').db;
       mockDb.query.mockResolvedValue(facilityFilteredKPIs);
 
       // Act
@@ -71,7 +130,6 @@ describe('AnalyticsService', () => {
       // Arrange
       const query = { startDate: '2023-01-01' };
       const cachedResult = [mockPipelineKPIs[0]];
-      const mockRedis = require('../../config/redis').redis;
       mockRedis.get.mockResolvedValue(cachedResult);
 
       // Act
@@ -86,21 +144,19 @@ describe('AnalyticsService', () => {
   describe('refreshMaterializedViews', () => {
     it('should refresh all views when no specific view provided', async () => {
       // Arrange
-      const mockDb = require('../../config/database').db;
       mockDb.query.mockResolvedValue([]);
-      const mockRedis = require('../../config/redis').redis;
 
       // Act
       await analyticsService.refreshMaterializedViews();
 
       // Assert
       expect(mockDb.query).toHaveBeenCalledWith('SELECT analytics.refresh_all_analytics()');
-      expect(mockRedis.getClient().keys).toHaveBeenCalled();
+      expect(mockRedis.getClient).toHaveBeenCalled();
+      expect(mockRedisClient.keys).toHaveBeenCalledWith('analytics:*');
     });
 
     it('should refresh specific view when provided', async () => {
       // Arrange
-      const mockDb = require('../../config/database').db;
       mockDb.query.mockResolvedValue([]);
 
       // Act
