@@ -7,13 +7,14 @@
     "analytics-service"
   ],
   "scripts": {
-    "install:all": "pnpm install",
-    "dev": "pnpm --filter bi-agent-analytics dev",
-    "build": "pnpm --filter bi-agent-analytics build",
-    "start": "pnpm --filter bi-agent-analytics start",
-    "test": "pnpm --filter bi-agent-analytics test",
-    "analytics:run": "pnpm --filter bi-agent-analytics analytics:run",
-    "analytics:test": "pnpm --filter bi-agent-analytics analytics:test",
+    "install:all": "npm install",
+    "dev": "npm run dev --workspace=bi-agent-analytics",
+    "build": "npm run build --workspace=bi-agent-analytics",
+    "start": "npm run start --workspace=bi-agent-analytics",
+    "test": "npm run test --workspace=bi-agent-analytics",
+    "lint": "npm run lint --workspace=bi-agent-analytics",
+    "analytics:run": "npm run analytics:run --workspace=bi-agent-analytics",
+    "analytics:test": "npm run analytics:test --workspace=bi-agent-analytics",
     "setup": "chmod +x jobs/setup.sh && jobs/setup.sh",
     "setup:full": "jobs/setup.sh --with-sample-data --with-dbt --with-tests"
   },
