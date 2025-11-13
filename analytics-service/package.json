@@ -16,6 +16,7 @@
     "migrate": "node dist/database/migrate.js",
     "migrate:rollback": "node dist/database/migrate.js rollback",
     "migrate:status": "node dist/database/migrate.js status",
+    "seed": "npm run build && npm run migrate && node dist/scripts/seed.js",
     "analytics:run": "cd ../../dbt && dbt run",
     "analytics:test": "cd ../../dbt && dbt test",
     "analytics:docs": "cd ../../dbt && dbt docs generate && dbt docs serve",
