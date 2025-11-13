@@ -32,6 +32,7 @@ bi-agent/
 - **Redis Caching**: Intelligent caching for improved performance
 - **BullMQ Jobs**: Scheduled and manual refresh strategies
 - **HIPAA Compliance**: PII redaction and minimum threshold enforcement
+- **OpenTelemetry Observability**: Tracing, metrics, and dashboards with Jaeger, Prometheus, and Grafana
 - **dbt Integration**: Transformations with dbt for analytics engineering
 - **TypeScript**: Full type safety throughout the application
 
@@ -45,6 +46,7 @@ bi-agent/
 4. **Job Queue**: BullMQ for background processing
 5. **Analytics Engine**: dbt for data transformations
 6. **Refresh Jobs**: Automated and manual data refresh strategies
+7. **Observability Stack**: OpenTelemetry, Jaeger, Prometheus, and Grafana
 
 ### KPIs Provided
 
@@ -228,6 +230,31 @@ pnpm docker:logs
 # Stop services
 pnpm docker:down
 ```
+
+## Observability
+
+The analytics stack ships with a complete observability suite powered by OpenTelemetry:
+
+- **Distributed Tracing** via Jaeger
+- **Metrics & Alerting** via Prometheus
+- **Dashboards** via Grafana
+- **Structured Logging** with correlation IDs and audit trails
+
+### Running the Observability Stack
+
+```bash
+cd analytics-service
+docker-compose up -d
+```
+
+This command starts the analytics API, PostgreSQL, Redis, and the observability services:
+
+- OpenTelemetry Collector (OTLP on `4317`/`4318`)
+- Jaeger UI at http://localhost:16686
+- Prometheus at http://localhost:9090
+- Grafana at http://localhost:3001 (admin/admin)
+
+A detailed overview of the observability components is available in [`observability/README.md`](observability/README.md).
 
 ## Environment Variables
 
