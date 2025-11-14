@@ -222,6 +222,8 @@ export interface ForecastScenario {
   createdAt: string;
   createdBy: string;
   isReport: boolean;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -284,6 +286,8 @@ export interface InsightsReport {
   };
   trends: TrendAnalysis;
   narrative: string;
+}
+
 export interface GovernanceConfig {
   auditLog: {
     enabled: boolean;
@@ -372,4 +376,67 @@ export interface SecurityContext {
   auditRequired: boolean;
   piiAccess: boolean;
   facilityScope?: string;
+}
+
+// Data Source and Connector types
+export enum DataSourceType {
+  POSTGRES = 'postgres',
+  CSV = 'csv',
+  S3_PARQUET = 's3_parquet',
+}
+
+export enum DataType {
+  STRING = 'string',
+  INTEGER = 'integer',
+  FLOAT = 'float',
+  BOOLEAN = 'boolean',
+  DATE = 'date',
+  TIMESTAMP = 'timestamp',
+  UNKNOWN = 'unknown',
+}
+
+export interface ColumnMetadata {
+  name: string;
+  type: DataType;
+  nullable: boolean;
+  sample?: any;
+  description?: string;
+}
+
+export interface ColumnProfile {
+  name: string;
+  type: DataType;
+  nullCount: number;
+  uniqueCount: number;
+  sampleValues: any[];
+  minLength?: number;
+  maxLength?: number;
+  avgLength?: number;
+  minValue?: any;
+  maxValue?: any;
+  mostCommon?: any;
+}
+
+export interface SchemaMetadata {
+  table?: string;
+  path?: string;
+  columns: ColumnMetadata[];
+  rowCount?: number;
+  sizeBytes?: number;
+  createdAt?: Date;
+  lastModified?: Date;
+}
+
+export interface DataSource {
+  id: string;
+  name: string;
+  type: DataSourceType;
+  enabled: boolean;
+  config: Record<string, any>;
+  schema?: SchemaMetadata;
+  columnProfiles?: ColumnProfile[];
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  facilityId?: string;
 }
