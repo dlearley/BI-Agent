@@ -15,6 +15,13 @@ bi-agent/
 │   ├── package.json      # Service dependencies
 │   ├── Dockerfile        # Container configuration
 │   └── docker-compose.yml
+├── apps/ml/              # NL2SQL FastAPI service (NEW)
+│   ├── app/              # FastAPI application
+│   │   ├── services/     # LLM, vector store, validation
+│   │   ├── tasks/        # Celery tasks
+│   │   └── prompts/      # Few-shot examples
+│   ├── tests/            # Integration tests
+│   └── README.md         # ML service documentation
 ├── dbt/                  # dbt analytics project
 │   ├── models/           # Analytics models
 │   ├── macros/           # Custom dbt macros
@@ -29,24 +36,27 @@ bi-agent/
 
 - **PostgreSQL Analytics**: Materialized views and standard views for KPI calculations
 - **REST API**: Express.js API with role-based access control (RBAC)
+- **NL2SQL Service**: FastAPI service for natural language to SQL conversion with LLM integration
 - **Redis Caching**: Intelligent caching for improved performance
 - **BullMQ Jobs**: Scheduled and manual refresh strategies
 - **HIPAA Compliance**: PII redaction and minimum threshold enforcement
 - **OpenTelemetry Observability**: Tracing, metrics, and dashboards with Jaeger, Prometheus, and Grafana
 - **dbt Integration**: Transformations with dbt for analytics engineering
 - **TypeScript**: Full type safety throughout the application
+- **SQL Safety Rails**: AST parsing, dangerous operation blocking, cost estimation
 
 ## Architecture
 
 ### Core Components
 
 1. **Analytics Service** (`analytics-service/`): Main API service for analytics endpoints
-2. **Database Layer**: PostgreSQL with materialized views for KPIs
-3. **Cache Layer**: Redis for performance optimization
-4. **Job Queue**: BullMQ for background processing
-5. **Analytics Engine**: dbt for data transformations
-6. **Refresh Jobs**: Automated and manual data refresh strategies
-7. **Observability Stack**: OpenTelemetry, Jaeger, Prometheus, and Grafana
+2. **NL2SQL Service** (`apps/ml/`): FastAPI service for natural language to SQL conversion
+3. **Database Layer**: PostgreSQL with materialized views for KPIs and pgvector for embeddings
+4. **Cache Layer**: Redis for performance optimization
+5. **Job Queue**: BullMQ for background processing and Celery for ML tasks
+6. **Analytics Engine**: dbt for data transformations
+7. **Refresh Jobs**: Automated and manual data refresh strategies
+8. **Observability Stack**: OpenTelemetry, Jaeger, Prometheus, and Grafana
 
 ### KPIs Provided
 
@@ -118,6 +128,74 @@ pnpm dev
 pnpm build
 pnpm start
 ```
+
+## NL2SQL Service
+
+The NL2SQL service provides natural language to SQL conversion using LLM integration with comprehensive safety rails.
+
+### Features
+
+- **LLM Integration**: OpenAI-compatible API for SQL generation
+- **Vector Store**: pgvector for schema embedding similarity search
+- **Few-Shot Prompting**: Pre-configured examples for better SQL quality
+- **Safety Rails**: AST parsing, dangerous operation blocking, EXPLAIN-based validation
+- **Query Caching**: Redis-based caching for performance
+- **Cost Estimation**: Heuristic and actual query cost analysis
+- **Celery Tasks**: Background materialization of query results
+
+### Quick Start
+
+```bash
+cd apps/ml
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your LLM_API_KEY and database credentials
+
+# Run tests
+pytest tests/ -v
+
+# Run demo (no API key needed)
+python demo_example.py
+
+# Start the service
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# API documentation at: http://localhost:8000/docs
+```
+
+### NL2SQL API Examples
+
+**Convert natural language to SQL:**
+```bash
+curl -X POST http://localhost:8000/nl2sql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Show me total revenue by month",
+    "org_id": "demo_org",
+    "user_id": "user_123"
+  }'
+```
+
+**Materialize query results:**
+```bash
+curl -X POST http://localhost:8000/materialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_id": "uuid-here",
+    "org_id": "demo_org",
+    "output_table": "revenue_summary"
+  }'
+```
+
+For detailed documentation, see [`apps/ml/README.md`](apps/ml/README.md) and [`apps/ml/IMPLEMENTATION.md`](apps/ml/IMPLEMENTATION.md).
 
 ## API Documentation
 
