@@ -2,10 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import path from 'path';
 import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
 import analyticsRoutes from './routes/analytics';
+import forecastRoutes from './routes/forecast';
 import config from './config';
 
 const app: express.Application = express();
@@ -56,6 +58,12 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
+app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
+
+// Serve static files for the forecast UI
+app.use('/js', express.static(path.join(__dirname, '../public/js')));
+app.use('/forecast.html', express.static(path.join(__dirname, '../public/forecast.html')));
+app.use('/forecast', express.static(path.join(__dirname, '../public/forecast.html')));
 
 // 404 handler
 app.use('*', (req, res) => {
