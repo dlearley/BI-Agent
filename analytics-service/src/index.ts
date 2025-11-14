@@ -5,7 +5,10 @@ import compression from 'compression';
 import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
+import { governanceService } from './services/governance.service';
+import { metricVersioningService } from './services/metric-versioning.service';
 import analyticsRoutes from './routes/analytics';
+import governanceRoutes from './routes/governance';
 import config from './config';
 
 const app: express.Application = express();
@@ -56,6 +59,7 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
+app.use(`/api/${apiVersion}/governance`, governanceRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -83,6 +87,10 @@ async function startServer(): Promise<void> {
     if (!dbHealthy) {
       throw new Error('Database connection failed');
     }
+
+    // Initialize governance tables
+    await governanceService.initializeTables();
+    await metricVersioningService.initializeTable();
 
     // Test Redis connection
     const redisHealthy = await redis.healthCheck();
