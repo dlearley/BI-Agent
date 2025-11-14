@@ -222,6 +222,8 @@ export interface ForecastScenario {
   createdAt: string;
   createdBy: string;
   isReport: boolean;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -284,6 +286,8 @@ export interface InsightsReport {
   };
   trends: TrendAnalysis;
   narrative: string;
+}
+
 export interface GovernanceConfig {
   auditLog: {
     enabled: boolean;

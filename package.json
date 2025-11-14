@@ -4,15 +4,23 @@
   "description": "BI-Agent - Analytics and Business Intelligence Platform",
   "private": true,
   "workspaces": [
-    "analytics-service"
+    "analytics-service",
+    "webapp"
   ],
   "scripts": {
     "install:all": "npm install",
     "dev": "npm run dev --workspace=bi-agent-analytics",
-    "build": "npm run build --workspace=bi-agent-analytics",
+    "dev:webapp": "npm run dev --workspace=bi-agent-webapp",
+    "build": "npm run build --workspace=bi-agent-analytics && npm run build --workspace=bi-agent-webapp",
+    "build:analytics": "npm run build --workspace=bi-agent-analytics",
+    "build:webapp": "npm run build --workspace=bi-agent-webapp",
     "start": "npm run start --workspace=bi-agent-analytics",
-    "test": "npm run test --workspace=bi-agent-analytics",
-    "lint": "npm run lint --workspace=bi-agent-analytics",
+    "start:webapp": "npm run start --workspace=bi-agent-webapp",
+    "test": "npm run test --workspace=bi-agent-analytics && npm run test --workspace=bi-agent-webapp",
+    "test:webapp": "npm run test --workspace=bi-agent-webapp",
+    "test:e2e:webapp": "npm run test:e2e --workspace=bi-agent-webapp",
+    "lint": "npm run lint --workspace=bi-agent-analytics && npm run lint --workspace=bi-agent-webapp",
+    "lint:webapp": "npm run lint --workspace=bi-agent-webapp",
     "analytics:run": "npm run analytics:run --workspace=bi-agent-analytics",
     "analytics:test": "npm run analytics:test --workspace=bi-agent-analytics",
     "setup": "chmod +x jobs/setup.sh && jobs/setup.sh",
