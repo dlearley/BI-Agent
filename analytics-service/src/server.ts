@@ -7,6 +7,7 @@ import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
 import analyticsRoutes from './routes/analytics';
+import authRoutes from './routes/auth';
 import config from './config';
 import logger from './utils/logger';
 import { requestContextMiddleware } from './observability/request-context';
@@ -65,6 +66,7 @@ app.get('/health', async (req, res) => {
 
 // API routes
 const apiVersion = config.apiVersion || 'v1';
+app.use(`/api/${apiVersion}/auth`, authRoutes);
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
 
 // 404 handler
