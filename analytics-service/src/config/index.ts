@@ -33,6 +33,7 @@ const config: AppConfig = {
   mlService: {
     url: process.env.ML_SERVICE_URL || 'http://localhost:8000',
     timeout: parseInt(process.env.ML_SERVICE_TIMEOUT || '30000'),
+  },
   governance: {
     auditLog: {
       enabled: process.env.AUDIT_LOG_ENABLED !== 'false',
@@ -119,6 +120,9 @@ const config: AppConfig = {
       retention: parseInt(process.env.METRIC_VERSION_RETENTION || '10'),
     },
   },
+  port: parseInt(process.env.PORT || '3000'),
+  apiVersion: process.env.API_VERSION || 'v1',
+  nodeEnv: process.env.NODE_ENV || 'development',
 };
 
 export default config;

@@ -5,6 +5,7 @@ import config from '../config';
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
+  organizationId?: string;
 }
 
 export const authenticate = async (
@@ -33,6 +34,8 @@ export const authenticate = async (
     };
 
     req.user = user;
+    // Extract organization ID from header or token
+    req.organizationId = (req.headers['x-organization-id'] as string) || decoded.organizationId || 'default-org';
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
