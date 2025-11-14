@@ -577,6 +577,53 @@ export class AnalyticsService {
       await client.del(...keys);
     }
   }
+
+  // Wrapper method for getting all KPIs (simplified for alerts/reports)
+  async getKPIs(query: AnalyticsQuery): Promise<AnalyticsKPI> {
+    // Create a mock user with admin permissions for internal use
+    const systemUser: User = {
+      id: 'system',
+      email: 'system@internal',
+      role: 'admin' as any,
+      permissions: []
+    };
+
+    // Fetch all KPI data
+    const pipelineData = await this.getPipelineKPIs(query, systemUser);
+    const complianceData = await this.getComplianceMetrics(query, systemUser);
+    const revenueData = await this.getRevenueMetrics(query, systemUser);
+    const outreachData = await this.getOutreachMetrics(query, systemUser);
+
+    // Aggregate pipeline data (it returns an array)
+    const totalApplications = Array.isArray(pipelineData) 
+      ? pipelineData.reduce((sum: number, item: any) => sum + (item.total_applications || 0), 0)
+      : 0;
+    const avgTimeToFill = Array.isArray(pipelineData) && pipelineData.length > 0
+      ? pipelineData.reduce((sum: number, item: any) => sum + (item.avg_time_to_fill_days || 0), 0) / pipelineData.length
+      : 0;
+
+    // Aggregate compliance data (it returns an array)
+    const totalCompliant = Array.isArray(complianceData)
+      ? complianceData.reduce((sum: number, item: any) => sum + (item.compliantApplications || 0), 0)
+      : 0;
+    const totalComplianceApps = Array.isArray(complianceData)
+      ? complianceData.reduce((sum: number, item: any) => sum + (item.totalApplications || 0), 0)
+      : 0;
+    const complianceRate = totalComplianceApps > 0 ? (totalCompliant / totalComplianceApps) * 100 : 0;
+
+    return {
+      pipelineCount: totalApplications,
+      timeToFill: avgTimeToFill,
+      complianceStatus: {
+        totalApplications: totalComplianceApps,
+        compliantApplications: totalCompliant,
+        complianceRate,
+        violations: []
+      },
+      revenue: revenueData,
+      outreachEffectiveness: outreachData
+    };
+  }
 }
 
 export const analyticsService = new AnalyticsService();
