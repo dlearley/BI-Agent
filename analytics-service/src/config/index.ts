@@ -33,6 +33,32 @@ const config: AppConfig = {
   mlService: {
     url: process.env.ML_SERVICE_URL || 'http://localhost:8000',
     timeout: parseInt(process.env.ML_SERVICE_TIMEOUT || '30000'),
+  },
+  alerts: {
+    enabled: process.env.ALERTS_ENABLED !== 'false',
+    evaluationInterval: parseInt(process.env.ALERTS_EVALUATION_INTERVAL || '300000'), // 5 minutes
+    maxRetries: parseInt(process.env.ALERTS_MAX_RETRIES || '3'),
+  },
+  reports: {
+    enabled: process.env.REPORTS_ENABLED !== 'false',
+    storageDir: process.env.REPORTS_STORAGE_DIR || './reports',
+    maxFileSizeMB: parseInt(process.env.REPORTS_MAX_FILE_SIZE_MB || '10'),
+  },
+  notifications: {
+    smtp: {
+      host: process.env.SMTP_HOST || 'localhost',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      user: process.env.SMTP_USER,
+      password: process.env.SMTP_PASSWORD,
+      from: process.env.SMTP_FROM || 'analytics@example.com',
+    },
+  },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+    maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '2000'),
+  },
   governance: {
     auditLog: {
       enabled: process.env.AUDIT_LOG_ENABLED !== 'false',
