@@ -17,6 +17,9 @@ import analyticsRoutes from './routes/analytics';
 import forecastRoutes from './routes/forecast';
 import insightsRoutes from './routes/insights';
 import governanceRoutes from './routes/governance';
+import authRoutes from './routes/auth';
+import orgsRoutes from './routes/orgs';
+import teamsRoutes from './routes/teams';
 import config from './config';
 
 const app: express.Application = express();
@@ -66,6 +69,9 @@ app.get('/health', async (req, res) => {
 
 // API routes
 const apiVersion = config.apiVersion || 'v1';
+app.use(`/api/${apiVersion}/auth`, authRoutes);
+app.use(`/api/${apiVersion}/orgs`, orgsRoutes);
+app.use(`/api/${apiVersion}/teams`, teamsRoutes);
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
 app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
 

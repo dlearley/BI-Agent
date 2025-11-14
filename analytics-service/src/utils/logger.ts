@@ -5,7 +5,7 @@ import { getCorrelationId } from '../observability/request-context';
 const { combine, timestamp, printf, colorize, json } = winston.format;
 
 // Custom format to include trace context and correlation ID
-const traceFormat = printf((info) => {
+const traceFormat = winston.format((info: any) => {
   const span = trace.getSpan(context.active());
   if (span) {
     const spanContext = span.spanContext();
@@ -21,17 +21,17 @@ const traceFormat = printf((info) => {
 });
 
 // Console format for development
-const consoleFormat = printf(({ level, message, timestamp, traceId, correlationId, ...metadata }) => {
-  const traceInfo = traceId ? `[trace:${traceId.substring(0, 8)}]` : '';
-  const correlationInfo = correlationId ? `[corr:${correlationId.substring(0, 8)}]` : '';
+const consoleFormat = printf(({ level, message, timestamp, traceId, correlationId, ...metadata }: any) => {
+  const traceIdStr = traceId && typeof traceId === 'string' ? `[trace:${traceId.substring(0, 8)}]` : '';
+  const correlationIdStr = correlationId && typeof correlationId === 'string' ? `[corr:${correlationId.substring(0, 8)}]` : '';
   const metaStr = Object.keys(metadata).length ? JSON.stringify(metadata) : '';
-  return `${timestamp} ${level} ${traceInfo}${correlationInfo} ${message} ${metaStr}`;
+  return `${timestamp} ${level} ${traceIdStr}${correlationIdStr} ${message} ${metaStr}`;
 });
 
 // JSON format for production
 const productionFormat = combine(
   timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  traceFormat,
+  traceFormat as any,
   json()
 );
 
@@ -39,7 +39,7 @@ const productionFormat = combine(
 const developmentFormat = combine(
   timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   colorize(),
-  traceFormat,
+  traceFormat as any,
   consoleFormat
 );
 
@@ -79,7 +79,7 @@ export const auditLogger = winston.createLogger({
   level: 'info',
   format: combine(
     timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    traceFormat,
+    traceFormat as any,
     json()
   ),
   defaultMeta: {
