@@ -254,14 +254,16 @@ export class GovernanceController {
         case 'compliance':
           data = await analyticsService.getComplianceMetrics(filters || {}, user);
           break;
-        case 'revenue':
+        case 'revenue': {
           const revenueData = await analyticsService.getRevenueMetrics(filters || {}, user);
           data = Array.isArray(revenueData) ? revenueData : [revenueData];
           break;
-        case 'outreach':
+        }
+        case 'outreach': {
           const outreachData = await analyticsService.getOutreachMetrics(filters || {}, user);
           data = Array.isArray(outreachData) ? outreachData : [outreachData];
           break;
+        }
         default:
           res.status(400).json({
             success: false,
