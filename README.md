@@ -62,7 +62,7 @@ bi-agent/
 - Node.js 18+
 - PostgreSQL 12+
 - Redis 6+
-- pnpm 8+
+- npm or pnpm
 - (Optional) dbt Core for analytics transformations
 
 ### Installation
@@ -73,12 +73,29 @@ git clone <repository-url>
 cd bi-agent
 
 # Install dependencies
-pnpm install:all
+npm install
 
 # Copy environment configuration
 cp analytics-service/.env.example analytics-service/.env
 
 # Edit .env with your database and Redis credentials
+```
+
+### Seed Demo Data
+
+```bash
+# Seed database with demo organization and ecommerce data
+npm run seed
+
+# This will create:
+# - Demo Ecommerce organization
+# - 3 data connectors
+# - 5 saved queries
+# - 3 dashboards (Marketing, Sales, Finance)
+# - 2 alerts
+# - 1 weekly report template
+# - Sample ecommerce data (customers, products, orders)
+# - Celery-style schedules for alerts and reports
 ```
 
 ### Environment Setup

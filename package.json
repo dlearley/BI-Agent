@@ -16,7 +16,8 @@
     "analytics:run": "npm run analytics:run --workspace=bi-agent-analytics",
     "analytics:test": "npm run analytics:test --workspace=bi-agent-analytics",
     "setup": "chmod +x jobs/setup.sh && jobs/setup.sh",
-    "setup:full": "jobs/setup.sh --with-sample-data --with-dbt --with-tests"
+    "setup:full": "jobs/setup.sh --with-sample-data --with-dbt --with-tests",
+    "seed": "npm run seed --workspace=bi-agent-analytics"
   },
   "engines": {
     "node": ">=18.0.0",
