@@ -222,6 +222,8 @@ export interface ForecastScenario {
   createdAt: string;
   createdBy: string;
   isReport: boolean;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -284,6 +286,8 @@ export interface InsightsReport {
   };
   trends: TrendAnalysis;
   narrative: string;
+}
+
 export interface GovernanceConfig {
   auditLog: {
     enabled: boolean;
@@ -372,4 +376,137 @@ export interface SecurityContext {
   auditRequired: boolean;
   piiAccess: boolean;
   facilityScope?: string;
+}
+
+// Dashboard Builder Types
+export interface DataConnector {
+  id: string;
+  organizationId: string;
+  name: string;
+  type: 'postgresql' | 'mysql' | 'bigquery' | 'snowflake' | 'redshift' | 'api';
+  config: Record<string, any>;
+  status: 'active' | 'inactive' | 'error';
+  lastSyncAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SavedQuery {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  queryText: string;
+  queryType: 'kpi' | 'custom' | 'metric';
+  parameters: Record<string, any>;
+  createdBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DashboardWidget {
+  id: string;
+  dashboardId: string;
+  queryId?: string;
+  type: 'chart' | 'kpi' | 'table' | 'metric' | 'gauge' | 'stat';
+  title?: string;
+  description?: string;
+  chartType?: 'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'map' | 'heatmap';
+  config: Record<string, any>;
+  position: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
+  drillDownConfig?: Record<string, any>;
+  crossFilterConfig?: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DashboardFilter {
+  id: string;
+  dashboardId: string;
+  name: string;
+  fieldName: string;
+  filterType: 'text' | 'date' | 'number' | 'select' | 'multi-select' | 'range';
+  defaultValue?: any;
+  options?: any[];
+  isGlobal: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Dashboard {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  type: 'marketing' | 'sales' | 'finance' | 'operations' | 'custom';
+  layout: DashboardWidget[];
+  filters: Record<string, DashboardFilter>;
+  isTemplate: boolean;
+  createdBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface QueryResultsCache {
+  id: string;
+  queryId: string;
+  resultHash: string;
+  resultData: any[];
+  queryParameters?: Record<string, any>;
+  executionTimeMs: number;
+  rowCount: number;
+  cachedAt: Date;
+  expiresAt: Date;
+  ttlSeconds: number;
+}
+
+export interface DashboardExport {
+  id: string;
+  dashboardId: string;
+  exportFormat: 'pdf' | 'csv' | 'json' | 'excel';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  filePath?: string;
+  fileSizeBytes?: number;
+  exportConfig?: Record<string, any>;
+  createdBy?: string;
+  createdAt: Date;
+  completedAt?: Date;
+  errorMessage?: string;
+}
+
+export interface QueryExecutionResult {
+  id: string;
+  success: boolean;
+  data: any[];
+  columns?: Array<{
+    name: string;
+    type: string;
+  }>;
+  rowCount: number;
+  executionTimeMs: number;
+  cached: boolean;
+  error?: string;
+  cacheIndicator?: {
+    cached: boolean;
+    expiresAt?: Date;
+    ttl?: number;
+  };
+}
+
+export interface NLSuggestion {
+  query: string;
+  description: string;
+  score: number;
+}
+
+export interface SchemaColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+  description?: string;
 }
