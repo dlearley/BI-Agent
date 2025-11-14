@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forecast Sandbox - BI Agent Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .results-panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #555;
+        }
+
+        select, input, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e8ed;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .slider-group {
+            margin-bottom: 1rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .slider-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #e1e8ed;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-left: 0.5rem;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+            margin-left: 0.5rem;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 2rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .backtest-results {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 6px;
+            margin-bottom: 2rem;
+        }
+
+        .backtest-results h3 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .scenarios-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .scenario-list {
+            margin-top: 1rem;
+        }
+
+        .scenario-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .scenario-info h4 {
+            margin-bottom: 0.25rem;
+            color: #333;
+        }
+
+        .scenario-info p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .scenario-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔮 Forecast Sandbox</h1>
+            <p class="subtitle">Create predictive models and run what-if scenarios</p>
+        </header>
+
+        <div class="main-content">
+            <div class="control-panel">
+                <h2>Forecast Configuration</h2>
+                
+                <div class="form-group">
+                    <label for="metric">Metric to Forecast</label>
+                    <select id="metric" required>
+                        <option value="">Select a metric...</option>
+                        <option value="revenue">Revenue</option>
+                        <option value="pipeline_count">Pipeline Count</option>
+                        <option value="time_to_fill">Time to Fill</option>
+                        <option value="compliance_rate">Compliance Rate</option>
+                        <option value="outreach_response_rate">Outreach Response Rate</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="model">ML Model</label>
+                    <select id="model" required>
+                        <option value="">Select a model...</option>
+                        <option value="prophet">Prophet</option>
+                        <option value="arima">ARIMA</option>
+                        <option value="xgboost">XGBoost</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="endDate">End Date</label>
+                    <input type="date" id="endDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="horizon">Forecast Horizon (days)</label>
+                    <input type="number" id="horizon" min="1" max="365" value="30" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="frequency">Frequency</label>
+                    <select id="frequency" required>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <h3>What-If Assumptions</h3>
+                    
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Growth Rate</span>
+                            <span class="slider-value" id="growthRateValue">5%</span>
+                        </div>
+                        <input type="range" id="growthRate" min="-50" max="100" value="5" step="1">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Seasonality</span>
+                            <span class="slider-value" id="seasonalityValue">10%</span>
+                        </div>
+                        <input type="range" id="seasonality" min="0" max="100" value="10" step="1">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Trend</span>
+                            <span class="slider-value" id="trendValue">0%</span>
+                        </div>
+                        <input type="range" id="trend" min="-50" max="50" value="0" step="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="enableBacktest" checked>
+                        Enable Backtesting (30 periods)
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-primary" id="generateForecast">
+                        Generate Forecast
+                    </button>
+                    <button class="btn btn-success" id="saveScenario" disabled>
+                        Save Scenario
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <div id="loading" class="loading hidden">
+                    <h3>🔄 Generating Forecast...</h3>
+                    <p>This may take a few moments as we process your data through the ML models.</p>
+                </div>
+
+                <div id="error" class="error hidden"></div>
+                <div id="success" class="success hidden"></div>
+
+                <div id="results" class="hidden">
+                    <h2>Forecast Results</h2>
+                    
+                    <div class="chart-container">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+
+                    <div class="metrics-grid" id="metricsGrid">
+                        <!-- Metrics will be populated here -->
+                    </div>
+
+                    <div class="backtest-results" id="backtestResults">
+                        <h3>Backtest Performance</h3>
+                        <div id="backtestMetrics">
+                            <!-- Backtest metrics will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scenarioName">Scenario Name</label>
+                        <input type="text" id="scenarioName" placeholder="Enter scenario name...">
+                        
+                        <label for="scenarioDescription" style="margin-top: 1rem;">Description</label>
+                        <textarea id="scenarioDescription" rows="3" placeholder="Describe your scenario..."></textarea>
+                        
+                        <div style="margin-top: 1rem;">
+                            <label>
+                                <input type="checkbox" id="saveAsReport">
+                                Save as Report
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scenarios-section">
+            <h2>My Scenarios</h2>
+            <button class="btn btn-secondary btn-small" id="refreshScenarios">Refresh</button>
+            <div class="scenario-list" id="scenarioList">
+                <!-- Scenarios will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/forecast.js"></script>
+</body>
+</html>

@@ -7,12 +7,14 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import path from 'path';
 import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
 import { governanceService } from './services/governance.service';
 import { metricVersioningService } from './services/metric-versioning.service';
 import analyticsRoutes from './routes/analytics';
+import forecastRoutes from './routes/forecast';
 import insightsRoutes from './routes/insights';
 import governanceRoutes from './routes/governance';
 import config from './config';
@@ -65,6 +67,12 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
+app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
+
+// Serve static files for the forecast UI
+app.use('/js', express.static(path.join(__dirname, '../public/js')));
+app.use('/forecast.html', express.static(path.join(__dirname, '../public/forecast.html')));
+app.use('/forecast', express.static(path.join(__dirname, '../public/forecast.html')));
 app.use(`/api/${apiVersion}/insights`, insightsRoutes);
 app.use(`/api/${apiVersion}/governance`, governanceRoutes);
 

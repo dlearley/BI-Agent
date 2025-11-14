@@ -30,6 +30,9 @@ const config: AppConfig = {
     refreshInterval: parseInt(process.env.ANALYTICS_REFRESH_INTERVAL || '3600000'),
     cacheTTL: parseInt(process.env.ANALYTICS_CACHE_TTL || '300'),
   },
+  mlService: {
+    url: process.env.ML_SERVICE_URL || 'http://localhost:8000',
+    timeout: parseInt(process.env.ML_SERVICE_TIMEOUT || '30000'),
   governance: {
     auditLog: {
       enabled: process.env.AUDIT_LOG_ENABLED !== 'false',
