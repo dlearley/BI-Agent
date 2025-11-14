@@ -13,6 +13,7 @@ import { queueService } from './services/queue.service';
 import { governanceService } from './services/governance.service';
 import { metricVersioningService } from './services/metric-versioning.service';
 import analyticsRoutes from './routes/analytics';
+import insightsRoutes from './routes/insights';
 import governanceRoutes from './routes/governance';
 import config from './config';
 
@@ -64,6 +65,7 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
+app.use(`/api/${apiVersion}/insights`, insightsRoutes);
 app.use(`/api/${apiVersion}/governance`, governanceRoutes);
 
 // 404 handler
