@@ -17,7 +17,15 @@
     "analytics:test": "npm run analytics:test --workspace=bi-agent-analytics",
     "setup": "chmod +x jobs/setup.sh && jobs/setup.sh",
     "setup:full": "jobs/setup.sh --with-sample-data --with-dbt --with-tests",
-    "seed": "npm run seed --workspace=bi-agent-analytics"
+    "seed": "npm run seed --workspace=bi-agent-analytics",
+    "worker:setup": "cd apps/worker && ./workerctl.sh setup",
+    "worker:start": "cd apps/worker && ./workerctl.sh start-all",
+    "worker:stop": "cd apps/worker && ./workerctl.sh stop-all",
+    "worker:restart": "cd apps/worker && ./workerctl.sh restart-all",
+    "worker:status": "cd apps/worker && ./workerctl.sh status",
+    "worker:migrate": "cd apps/worker && python migrate_db.py",
+    "docker:worker": "cd apps/worker && docker-compose up -d",
+    "docker:worker:down": "cd apps/worker && docker-compose down"
   },
   "engines": {
     "node": ">=18.0.0",

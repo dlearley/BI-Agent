@@ -15,6 +15,12 @@ bi-agent/
 │   ├── package.json      # Service dependencies
 │   ├── Dockerfile        # Container configuration
 │   └── docker-compose.yml
+├── apps/worker/           # Celery worker for background tasks
+│   ├── tasks/            # Celery task implementations
+│   ├── utils/            # Utility modules
+│   ├── requirements.txt  # Python dependencies
+│   ├── workerctl.sh     # Worker management script
+│   └── docker-compose.yml
 ├── dbt/                  # dbt analytics project
 │   ├── models/           # Analytics models
 │   ├── macros/           # Custom dbt macros
@@ -30,10 +36,16 @@ bi-agent/
 - **PostgreSQL Analytics**: Materialized views and standard views for KPI calculations
 - **REST API**: Express.js API with role-based access control (RBAC)
 - **Redis Caching**: Intelligent caching for improved performance
-- **BullMQ Jobs**: Scheduled and manual refresh strategies
+- **BullMQ Jobs**: Scheduled and manual refresh strategies (Node.js)
+- **Celery Workers**: Python-based background processing with advanced scheduling
 - **HIPAA Compliance**: PII redaction and minimum threshold enforcement
 - **OpenTelemetry Observability**: Tracing, metrics, and dashboards with Jaeger, Prometheus, and Grafana
 - **dbt Integration**: Transformations with dbt for analytics engineering
+- **Task Scheduling**: Comprehensive Celery beat scheduler for automated tasks
+- **Alert System**: Multi-channel alerting (email, webhook, Slack)
+- **Report Generation**: Automated report generation and delivery
+- **Circuit Breakers**: Protection against cascading failures
+- **Prometheus Metrics**: Comprehensive metrics collection and monitoring
 - **TypeScript**: Full type safety throughout the application
 
 ## Architecture
@@ -41,12 +53,15 @@ bi-agent/
 ### Core Components
 
 1. **Analytics Service** (`analytics-service/`): Main API service for analytics endpoints
-2. **Database Layer**: PostgreSQL with materialized views for KPIs
-3. **Cache Layer**: Redis for performance optimization
-4. **Job Queue**: BullMQ for background processing
-5. **Analytics Engine**: dbt for data transformations
-6. **Refresh Jobs**: Automated and manual data refresh strategies
-7. **Observability Stack**: OpenTelemetry, Jaeger, Prometheus, and Grafana
+2. **Celery Worker** (`apps/worker/`): Python-based background task processing
+3. **Database Layer**: PostgreSQL with materialized views for KPIs
+4. **Cache Layer**: Redis for performance optimization
+5. **Job Queue**: BullMQ (Node.js) and Celery (Python) for background processing
+6. **Analytics Engine**: dbt for data transformations
+7. **Refresh Jobs**: Automated and manual data refresh strategies
+8. **Alert System**: Multi-channel alerting and threshold monitoring
+9. **Report Engine**: Automated report generation and delivery
+10. **Observability Stack**: OpenTelemetry, Jaeger, Prometheus, and Grafana
 
 ### KPIs Provided
 
@@ -197,7 +212,47 @@ pnpm analytics:docs
 
 ## Job Management
 
-### Manual Refresh
+### Celery Worker (Python)
+
+The Celery worker handles background tasks including query refreshes, dbt runs, alerts, and reports.
+
+```bash
+# Setup Celery worker environment
+npm run worker:setup
+
+# Start all Celery services
+npm run worker:start
+
+# Stop all Celery services
+npm run worker:stop
+
+# Restart all Celery services
+npm run worker:restart
+
+# Check worker status
+npm run worker:status
+
+# Run database migrations for worker tables
+npm run worker:migrate
+
+# Start with Docker
+npm run docker:worker
+
+# Stop Docker services
+npm run docker:worker:down
+```
+
+#### Worker Services
+
+- **Analytics Worker**: Catalog refreshes, materialized view updates
+- **dbt Worker**: dbt model runs, tests, documentation generation
+- **Alerts Worker**: Alert processing, threshold monitoring, notifications
+- **Reports Worker**: Report generation and delivery
+- **Beat Scheduler**: Task scheduling and automation
+- **Flower Monitoring**: Real-time task monitoring at http://localhost:5555
+- **Metrics Server**: Prometheus metrics at http://localhost:8000
+
+### Manual Refresh (Node.js)
 
 ```bash
 # Refresh all analytics
