@@ -132,3 +132,67 @@ export interface AppConfig {
   apiVersion?: string;
   nodeEnv?: string;
 }
+
+export interface TimeSeriesPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface Anomaly {
+  timestamp: string;
+  value: number;
+  expectedValue: number;
+  score: number;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface AnomalyResult {
+  anomalies: Anomaly[];
+  statistics: {
+    mean: number;
+    stdDev: number;
+    threshold: number;
+    method: string;
+  };
+}
+
+export interface FeatureImportance {
+  feature: string;
+  importance: number;
+  contribution: number;
+  direction: 'positive' | 'negative';
+}
+
+export interface DriversResult {
+  drivers: FeatureImportance[];
+  metadata: {
+    method: string;
+    totalFeatures: number;
+    samplesAnalyzed: number;
+  };
+}
+
+export interface TrendAnalysis {
+  direction: 'increasing' | 'decreasing' | 'stable';
+  strength: number;
+  variance: number;
+  changeRate: number;
+}
+
+export interface InsightsReport {
+  id: string;
+  timestamp: string;
+  query: AnalyticsQuery;
+  anomalies: {
+    detected: Anomaly[];
+    statistics: any;
+    totalPoints: number;
+    anomalyRate: number;
+  };
+  drivers: {
+    topDrivers: FeatureImportance[];
+    metadata: any;
+  };
+  trends: TrendAnalysis;
+  narrative: string;
+}
