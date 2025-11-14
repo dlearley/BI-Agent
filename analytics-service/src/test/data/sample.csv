@@ -1,0 +1,11 @@
+id,name,email,created_date,score,active
+1,Alice Johnson,alice@example.com,2024-01-15,85.5,true
+2,Bob Smith,bob@example.com,2024-01-20,90.0,true
+3,Charlie Brown,charlie@example.com,2024-02-01,78.5,false
+4,Diana Prince,diana@example.com,2024-02-10,92.0,true
+5,Edward Norton,edward@example.com,2024-02-15,88.0,true
+6,Fiona Apple,fiona@example.com,2024-03-01,75.0,false
+7,George Lucas,george@example.com,2024-03-10,95.5,true
+8,Hannah Montana,hannah@example.com,2024-03-20,82.0,true
+9,Ian McKellen,ian@example.com,2024-04-01,89.0,true
+10,Julia Roberts,julia@example.com,2024-04-05,91.0,false

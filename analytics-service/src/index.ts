@@ -17,6 +17,7 @@ import analyticsRoutes from './routes/analytics';
 import forecastRoutes from './routes/forecast';
 import insightsRoutes from './routes/insights';
 import governanceRoutes from './routes/governance';
+import datasourcesRoutes from './routes/datasources';
 import config from './config';
 
 const app: express.Application = express();
@@ -68,6 +69,7 @@ app.get('/health', async (req, res) => {
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
 app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
+app.use(`/api/${apiVersion}/datasources`, datasourcesRoutes);
 
 // Serve static files for the forecast UI
 app.use('/js', express.static(path.join(__dirname, '../public/js')));
