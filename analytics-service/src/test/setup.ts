@@ -1,24 +1,32 @@
 // Mock data for testing
-export const mockAdminUser = {
+import { Permission, User, UserRole } from '../types';
+
+
+export const mockAdminUser: User = {
   id: 'admin-1',
   email: 'admin@test.com',
-  role: 'admin' as const,
-  permissions: ['view_analytics', 'view_facility_analytics', 'manage_analytics', 'view_pii'],
+  role: UserRole.ADMIN,
+  permissions: [
+    Permission.VIEW_ANALYTICS,
+    Permission.VIEW_FACILITY_ANALYTICS,
+    Permission.MANAGE_ANALYTICS,
+    Permission.VIEW_PII,
+  ],
 };
 
-export const mockRecruiterUser = {
+export const mockRecruiterUser: User = {
   id: 'recruiter-1',
   email: 'recruiter@test.com',
-  role: 'recruiter' as const,
+  role: UserRole.RECRUITER,
   facilityId: 'facility-1',
-  permissions: ['view_facility_analytics'],
+  permissions: [Permission.VIEW_FACILITY_ANALYTICS],
 };
 
-export const mockViewerUser = {
+export const mockViewerUser: User = {
   id: 'viewer-1',
   email: 'viewer@test.com',
-  role: 'viewer' as const,
-  permissions: ['view_analytics'],
+  role: UserRole.VIEWER,
+  permissions: [Permission.VIEW_ANALYTICS],
 };
 
 // Mock analytics data
