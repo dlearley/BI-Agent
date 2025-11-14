@@ -20,7 +20,10 @@ export enum Permission {
   VIEW_AUDIT_LOGS = 'view_audit_logs',
   MANAGE_GOVERNANCE = 'manage_governance',
   EXPORT_DATA = 'export_data',
-  VIEW_VERSIONED_METRICS = 'view_versioned_metrics'
+  VIEW_VERSIONED_METRICS = 'view_versioned_metrics',
+  MANAGE_DASHBOARDS = 'manage_dashboards',
+  VIEW_DASHBOARDS = 'view_dashboards',
+  SHARE_DASHBOARDS = 'share_dashboards'
 }
 
 export interface AnalyticsKPI {
@@ -222,6 +225,8 @@ export interface ForecastScenario {
   createdAt: string;
   createdBy: string;
   isReport: boolean;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -284,6 +289,8 @@ export interface InsightsReport {
   };
   trends: TrendAnalysis;
   narrative: string;
+}
+
 export interface GovernanceConfig {
   auditLog: {
     enabled: boolean;
@@ -363,6 +370,319 @@ export interface MetricVersion {
   createdBy: string;
   changeDescription?: string;
   complianceFramework?: 'hipaa' | 'gdpr' | 'soc2';
+}
+
+// Dashboard types
+export enum WidgetType {
+  KPI = 'kpi',
+  LINE = 'line',
+  AREA = 'area',
+  BAR = 'bar',
+  TABLE = 'table',
+  HEATMAP = 'heatmap',
+  MAP = 'map'
+}
+
+export enum DashboardStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived'
+}
+
+export enum ExportType {
+  PDF = 'pdf',
+  PNG = 'png'
+}
+
+export enum ExportStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed'
+}
+
+export interface Dashboard {
+  id: string;
+  name: string;
+  description?: string;
+  layout: DashboardLayout;
+  version: number;
+  status: DashboardStatus;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt?: Date;
+  tags: string[];
+  isPublic: boolean;
+  facilityId?: string;
+}
+
+export interface DashboardLayout {
+  grid: {
+    cols: number;
+    rows: number;
+    gap: number;
+  };
+  widgets: WidgetPosition[];
+}
+
+export interface WidgetPosition {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface Widget {
+  id: string;
+  dashboardId: string;
+  name: string;
+  type: WidgetType;
+  queryId: string;
+  config: WidgetConfig;
+  position: WidgetPosition;
+  drillThroughConfig?: DrillThroughConfig;
+  crossFilters?: CrossFilter[];
+  refreshInterval: number;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+}
+
+export interface WidgetConfig {
+  title?: string;
+  subtitle?: string;
+  colors?: string[];
+  legend?: {
+    show: boolean;
+    position?: 'top' | 'bottom' | 'left' | 'right';
+  };
+  axes?: {
+    x?: {
+      label?: string;
+      type?: 'category' | 'time' | 'value';
+    };
+    y?: {
+      label?: string;
+      min?: number;
+      max?: number;
+    };
+  };
+  table?: {
+    pagination?: boolean;
+    pageSize?: number;
+    sortable?: boolean;
+    filterable?: boolean;
+  };
+  kpi?: {
+    format?: 'number' | 'currency' | 'percentage';
+    trend?: boolean;
+    comparison?: {
+      period: string;
+      type: 'absolute' | 'percentage';
+    };
+  };
+  map?: {
+    center?: [number, number];
+    zoom?: number;
+    layers?: MapLayer[];
+  };
+  [key: string]: any;
+}
+
+export interface MapLayer {
+  type: 'choropleth' | 'scatter' | 'heatmap';
+  data: any;
+  options: any;
+}
+
+export interface DrillThroughConfig {
+  enabled: boolean;
+  targetDashboard?: string;
+  targetWidget?: string;
+  filters?: DrillThroughFilter[];
+}
+
+export interface DrillThroughFilter {
+  sourceField: string;
+  targetField: string;
+  type: 'equals' | 'contains' | 'greater_than' | 'less_than';
+}
+
+export interface CrossFilter {
+  sourceWidget: string;
+  targetWidget: string;
+  field: string;
+  type: 'filter' | 'highlight';
+}
+
+export interface WidgetQuery {
+  id: string;
+  name: string;
+  description?: string;
+  queryText: string;
+  queryType: 'sql' | 'materialized_view';
+  materializedViewName?: string;
+  parameters: QueryParameter[];
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  isTemplate: boolean;
+}
+
+export interface QueryParameter {
+  name: string;
+  type: 'string' | 'number' | 'date' | 'boolean';
+  required: boolean;
+  defaultValue?: any;
+  description?: string;
+}
+
+export interface WidgetDataCache {
+  id: string;
+  widgetId: string;
+  queryHash: string;
+  data: any;
+  metadata: {
+    rowCount?: number;
+    executionTime?: number;
+    lastUpdated?: Date;
+  };
+  createdAt: Date;
+  expiresAt: Date;
+  refreshCount: number;
+  lastRefreshedAt: Date;
+}
+
+export interface DashboardVersion {
+  id: string;
+  dashboardId: string;
+  version: number;
+  name: string;
+  description?: string;
+  layout: DashboardLayout;
+  widgetsSnapshot: Widget[];
+  createdAt: Date;
+  createdBy: string;
+  changeDescription?: string;
+  isPublished: boolean;
+}
+
+export interface DashboardShare {
+  id: string;
+  dashboardId: string;
+  sharedWithUserId?: string;
+  sharedWithRole?: string;
+  permissionLevel: 'view' | 'edit' | 'admin';
+  sharedBy: string;
+  sharedAt: Date;
+  expiresAt?: Date;
+}
+
+export interface ExportJob {
+  id: string;
+  dashboardId: string;
+  exportType: ExportType;
+  formatOptions: ExportFormatOptions;
+  status: ExportStatus;
+  filePath?: string;
+  fileSize?: number;
+  errorMessage?: string;
+  createdAt: Date;
+  startedAt?: Date;
+  completedAt?: Date;
+  createdBy: string;
+}
+
+export interface ExportFormatOptions {
+  paperSize?: 'A4' | 'A3' | 'Letter' | 'Legal';
+  orientation?: 'portrait' | 'landscape';
+  margin?: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  quality?: number; // For PNG
+  scale?: number; // For PDF
+  includeFilters?: boolean;
+  includeTimestamp?: boolean;
+  customHeader?: string;
+  customFooter?: string;
+}
+
+// Request/Response types for API
+export interface CreateDashboardRequest {
+  name: string;
+  description?: string;
+  layout?: DashboardLayout;
+  tags?: string[];
+  isPublic?: boolean;
+}
+
+export interface UpdateDashboardRequest {
+  name?: string;
+  description?: string;
+  layout?: DashboardLayout;
+  tags?: string[];
+  isPublic?: boolean;
+}
+
+export interface CreateWidgetRequest {
+  dashboardId: string;
+  name: string;
+  type: WidgetType;
+  queryId: string;
+  config: WidgetConfig;
+  position: WidgetPosition;
+  drillThroughConfig?: DrillThroughConfig;
+  crossFilters?: CrossFilter[];
+  refreshInterval?: number;
+}
+
+export interface UpdateWidgetRequest {
+  name?: string;
+  config?: WidgetConfig;
+  position?: WidgetPosition;
+  drillThroughConfig?: DrillThroughConfig;
+  crossFilters?: CrossFilter[];
+  refreshInterval?: number;
+}
+
+export interface CreateQueryRequest {
+  name: string;
+  description?: string;
+  queryText: string;
+  queryType?: 'sql' | 'materialized_view';
+  materializedViewName?: string;
+  parameters?: QueryParameter[];
+  isTemplate?: boolean;
+}
+
+export interface DashboardQueryOptions {
+  includeWidgets?: boolean;
+  includeVersions?: boolean;
+  includeShares?: boolean;
+  status?: DashboardStatus;
+  tags?: string[];
+  createdBy?: string;
+  facilityId?: string;
+}
+
+export interface WidgetDataRequest {
+  widgetId: string;
+  parameters?: Record<string, any>;
+  forceRefresh?: boolean;
+  useCache?: boolean;
+}
+
+export interface ExportRequest {
+  dashboardId: string;
+  exportType: ExportType;
+  formatOptions?: ExportFormatOptions;
+  widgetIds?: string[]; // Export specific widgets only
+  filters?: Record<string, any>; // Apply filters before export
 }
 
 export interface SecurityContext {

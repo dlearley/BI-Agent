@@ -13,10 +13,13 @@ import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
 import { governanceService } from './services/governance.service';
 import { metricVersioningService } from './services/metric-versioning.service';
+import { widgetMaterializationService } from './services/widget-materialization.service';
+import { dashboardJobService } from './services/dashboard-job.service';
 import analyticsRoutes from './routes/analytics';
 import forecastRoutes from './routes/forecast';
 import insightsRoutes from './routes/insights';
 import governanceRoutes from './routes/governance';
+import dashboardRoutes from './routes/dashboard';
 import config from './config';
 
 const app: express.Application = express();
@@ -68,6 +71,7 @@ app.get('/health', async (req, res) => {
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
 app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
+app.use(`/api/${apiVersion}/dashboard`, dashboardRoutes);
 
 // Serve static files for the forecast UI
 app.use('/js', express.static(path.join(__dirname, '../public/js')));
