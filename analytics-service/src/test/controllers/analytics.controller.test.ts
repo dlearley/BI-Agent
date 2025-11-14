@@ -1,37 +1,67 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import request from 'supertest';
-import express from 'express';
+import express, { Application, NextFunction, Request, Response } from 'express';
 import { analyticsController } from '../../controllers/analytics.controller';
 import { mockAdminUser, mockRecruiterUser, mockPipelineKPIs } from '../setup';
+import { User } from '../../types';
 
 // Mock middleware and services
 jest.mock('../../middleware/auth');
 jest.mock('../../middleware/hipaa');
 jest.mock('../../services/analytics.service');
-jest.mock('../../services/queue.service');
+
+type QueueServiceMock = {
+  enqueueRefreshJob: jest.MockedFunction<(viewName?: string) => Promise<any>>;
+  getJobStatus: jest.MockedFunction<(jobId: string) => Promise<any>>;
+  getQueueStats: jest.MockedFunction<() => Promise<any>>;
+};
+
+const queueServiceMock: QueueServiceMock = {
+  enqueueRefreshJob: jest.fn() as jest.MockedFunction<(viewName?: string) => Promise<any>>,
+  getJobStatus: jest.fn() as jest.MockedFunction<(jobId: string) => Promise<any>>,
+  getQueueStats: jest.fn() as jest.MockedFunction<() => Promise<any>>,
+};
+
+jest.mock('../../services/queue.service', () => ({
+  __esModule: true,
+  get queueService() {
+    return queueServiceMock;
+  },
+}));
+
+type AuthModule = typeof import('../../middleware/auth');
+type HipaaModule = typeof import('../../middleware/hipaa');
 
 describe('Analytics Controller', () => {
-  let app: express.Application;
+  let app: Application;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     app = express();
     app.use(express.json());
     
     // Mock authentication middleware
-    const mockAuth = require('../../middleware/auth');
-    mockAuth.authenticate.mockImplementation((req, res, next) => {
+    const mockAuth = jest.requireMock('../../middleware/auth') as jest.Mocked<AuthModule>;
+    mockAuth.authenticate.mockImplementation(async (req: Request & { user?: User }, _res: Response, next: NextFunction) => {
       req.user = mockAdminUser; // Default to admin user
       next();
     });
     
-    mockAuth.authorize.mockImplementation(() => (req, res, next) => next());
-    mockAuth.facilityScope.mockImplementation((req, res, next) => next());
+    mockAuth.authorize.mockImplementation(
+      () => (_req: Request & { user?: User }, _res: Response, next: NextFunction) => {
+        next();
+      }
+    );
+    mockAuth.facilityScope.mockImplementation((req: Request & { user?: User }, _res: Response, next: NextFunction) => {
+      next();
+    });
     
     // Mock HIPAA middleware
-    const mockHipaa = require('../../middleware/hipaa');
-    mockHipaa.hipaaCompliance.mockImplementation((req, res, next) => next());
+    const mockHipaa = jest.requireMock('../../middleware/hipaa') as jest.Mocked<HipaaModule>;
+    mockHipaa.hipaaCompliance.mockImplementation((req: Request & { user?: User }, _res: Response, next: NextFunction) => {
+      next();
+    });
     
     // Setup routes
     app.get('/analytics/pipeline', analyticsController.getPipelineKPIs.bind(analyticsController));
@@ -204,8 +234,7 @@ describe('Analytics Controller', () => {
     it('should enqueue refresh job for admin user', async () => {
       // Arrange
       const mockJob = { id: 'job-123', opts: { delay: 0 } };
-      const mockQueueService = require('../../services/queue.service');
-      mockQueueService.queueService.enqueueRefreshJob.mockResolvedValue(mockJob);
+      queueServiceMock.enqueueRefreshJob.mockResolvedValue(mockJob);
 
       // Act
       const response = await request(app).post('/analytics/refresh').send({
@@ -223,14 +252,13 @@ describe('Analytics Controller', () => {
           estimatedDelay: 0,
         },
       });
-      expect(mockQueueService.queueService.enqueueRefreshJob).toHaveBeenCalledWith('pipeline');
+      expect(queueServiceMock.enqueueRefreshJob).toHaveBeenCalledWith('pipeline');
     });
 
     it('should handle refresh without specific view', async () => {
       // Arrange
       const mockJob = { id: 'job-456', opts: { delay: 0 } };
-      const mockQueueService = require('../../services/queue.service');
-      mockQueueService.queueService.enqueueRefreshJob.mockResolvedValue(mockJob);
+      queueServiceMock.enqueueRefreshJob.mockResolvedValue(mockJob);
 
       // Act
       const response = await request(app).post('/analytics/refresh');
@@ -238,7 +266,7 @@ describe('Analytics Controller', () => {
       // Assert
       expect(response.status).toBe(200);
       expect(response.body.data.viewName).toBe('all');
-      expect(mockQueueService.queueService.enqueueRefreshJob).toHaveBeenCalledWith(undefined);
+      expect(queueServiceMock.enqueueRefreshJob).toHaveBeenCalledWith(undefined);
     });
   });
 
@@ -252,8 +280,7 @@ describe('Analytics Controller', () => {
       const mockAnalyticsService = require('../../services/analytics.service');
       mockAnalyticsService.analyticsService.getLastRefreshTimes.mockResolvedValue(mockLastRefresh);
       
-      const mockQueueService = require('../../services/queue.service');
-      mockQueueService.queueService.getQueueStats.mockResolvedValue({
+      queueServiceMock.getQueueStats.mockResolvedValue({
         waiting: 0,
         active: 0,
         completed: 50,
@@ -273,6 +300,7 @@ describe('Analytics Controller', () => {
         queueStats: expect.any(Object),
         timestamp: expect.any(String),
       });
+      expect(queueServiceMock.getQueueStats).toHaveBeenCalled();
     });
   });
 });

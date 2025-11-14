@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape the analytics service metrics endpoint
+  - job_name: 'analytics-service'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['analytics-backend:3000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: analytics-service
+  
+  # Scrape the OpenTelemetry collector metrics
+  - job_name: 'otel-collector'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['otel-collector:8889']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: otel-collector
+
+  # Scrape Jaeger metrics
+  - job_name: 'jaeger'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['jaeger:14269']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: jaeger
+
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

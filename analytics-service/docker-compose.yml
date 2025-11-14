@@ -18,13 +18,19 @@ services:
       - HIPAA_MIN_THRESHOLD=5
       - ANALYTICS_CACHE_TTL=300
       - ANALYTICS_REFRESH_INTERVAL=3600000
+      - OTEL_SERVICE_NAME=analytics-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - LOG_LEVEL=info
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - analytics-network
+      - observability
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
@@ -69,6 +75,82 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Observability Stack
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: analytics-otel-collector
+    command:
+      - "--config=/etc/otel-collector-config.yml"
+    volumes:
+      - ../observability/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "8889:8889"
+      - "13133:13133"
+    networks:
+      - observability
+    depends_on:
+      jaeger:
+        condition: service_started
+      prometheus:
+        condition: service_started
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: analytics-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "6831:6831/udp"
+    networks:
+      - observability
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: analytics-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - observability
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: analytics-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - observability
+    depends_on:
+      prometheus:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
 
   # Optional: dbt for analytics transformations
   dbt:
@@ -139,7 +221,14 @@ volumes:
     driver: local
   pgadmin_data:
     driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
 
 networks:
   analytics-network:
+    driver: bridge
+  observability:
     driver: bridge

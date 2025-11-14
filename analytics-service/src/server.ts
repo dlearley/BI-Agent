@@ -1,8 +1,4 @@
-// Tracing must be initialized before any other imports
-import './tracing';
-
-// Now import and start the server
-import './server';
+import { shutdownTelemetry } from './config/telemetry';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -10,12 +6,12 @@ import compression from 'compression';
 import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
-import { governanceService } from './services/governance.service';
-import { metricVersioningService } from './services/metric-versioning.service';
 import analyticsRoutes from './routes/analytics';
-import insightsRoutes from './routes/insights';
-import governanceRoutes from './routes/governance';
 import config from './config';
+import logger from './utils/logger';
+import { requestContextMiddleware } from './observability/request-context';
+import { metricsMiddleware, errorLoggingMiddleware } from './middleware/observability';
+import { metricsHandler } from './observability/metrics';
 
 const app: express.Application = express();
 
@@ -31,11 +27,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
+// Observability middleware
+app.use(requestContextMiddleware);
+app.use(metricsMiddleware);
+
+// Metrics endpoint (before auth middleware)
+app.get('/metrics', metricsHandler);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -54,10 +51,14 @@ app.get('/health', async (req, res) => {
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Health check failed', {
+      error: message,
+    });
     res.status(500).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: message,
     });
   }
 });
@@ -65,8 +66,6 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
-app.use(`/api/${apiVersion}/insights`, insightsRoutes);
-app.use(`/api/${apiVersion}/governance`, governanceRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -76,9 +75,16 @@ app.use('*', (req, res) => {
   });
 });
 
+// Error logging middleware
+app.use(errorLoggingMiddleware);
+
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error', {
+    error: err.message,
+    stack: err.stack,
+    url: req.originalUrl,
+  });
   
   res.status(err.status || 500).json({
     error: 'Internal Server Error',
@@ -95,10 +101,6 @@ async function startServer(): Promise<void> {
       throw new Error('Database connection failed');
     }
 
-    // Initialize governance tables
-    await governanceService.initializeTables();
-    await metricVersioningService.initializeTable();
-
     // Test Redis connection
     const redisHealthy = await redis.healthCheck();
     if (!redisHealthy) {
@@ -108,33 +110,41 @@ async function startServer(): Promise<void> {
     // Start the server
     const port = config.port || 3000;
     const server = app.listen(port, () => {
-      console.log(`🚀 Analytics backend server running on port ${port}`);
-      console.log(`📊 API available at http://localhost:${port}/api/${apiVersion}/analytics`);
-      console.log(`🏥 HIPAA mode: ${config.hipaa.enabled ? 'ENABLED' : 'DISABLED'}`);
-      console.log(`📅 Analytics refresh interval: ${config.analytics.refreshInterval}ms`);
+      logger.info('🚀 Analytics backend server running', {
+        port,
+        apiUrl: `http://localhost:${port}/api/${apiVersion}/analytics`,
+        metricsUrl: `http://localhost:${port}/metrics`,
+        hipaaMode: config.hipaa.enabled ? 'ENABLED' : 'DISABLED',
+        refreshInterval: config.analytics.refreshInterval,
+      });
     });
 
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
-      console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
+      logger.warn('Received shutdown signal, closing server', { signal });
       
       server.close(async () => {
-        console.log('📡 HTTP server closed');
+        logger.info('HTTP server closed');
         
         try {
           await queueService.close();
-          console.log('📋 Queue service closed');
+          logger.info('Queue service closed');
           
           await redis.close();
-          console.log('🔴 Redis connection closed');
+          logger.info('Redis connection closed');
           
           await db.close();
-          console.log('🗄️ Database connection closed');
+          logger.info('Database connection closed');
+
+          await shutdownTelemetry();
+          logger.info('Telemetry shut down');
           
-          console.log('✅ Graceful shutdown complete');
+          logger.info('Graceful shutdown complete');
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error during shutdown:', error);
+          logger.error('Error during shutdown', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           process.exit(1);
         }
       });
