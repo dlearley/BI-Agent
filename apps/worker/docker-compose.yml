@@ -1,0 +1,228 @@
+version: '3.8'
+
+services:
+  # Redis for Celery broker and backend
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: analytics_db
+      POSTGRES_USER: analytics_user
+      POSTGRES_PASSWORD: analytics_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analytics_user -d analytics_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Celery worker - Analytics queue
+  celery-worker-analytics:
+    build: .
+    command: celery -A apps.worker.celery_app worker --loglevel=info --queues=analytics --concurrency=2
+    environment:
+      - DATABASE_URL=postgresql://analytics_user:analytics_password@postgres:5432/analytics_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DBT_PROJECT_PATH=/app/dbt
+      - PROMETHEUS_PORT=8000
+    volumes:
+      - ./logs:/app/logs
+      - ./pids:/app/pids
+      - /tmp/reports:/tmp/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery worker - dbt queue
+  celery-worker-dbt:
+    build: .
+    command: celery -A apps.worker.celery_app worker --loglevel=info --queues=dbt --concurrency=1
+    environment:
+      - DATABASE_URL=postgresql://analytics_user:analytics_password@postgres:5432/analytics_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DBT_PROJECT_PATH=/app/dbt
+      - PROMETHEUS_PORT=8001
+    volumes:
+      - ./logs:/app/logs
+      - ./pids:/app/pids
+      - /tmp/reports:/tmp/reports
+      - ../dbt:/app/dbt:ro  # Mount dbt project read-only
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery worker - Alerts queue
+  celery-worker-alerts:
+    build: .
+    command: celery -A apps.worker.celery_app worker --loglevel=info --queues=alerts --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql://analytics_user:analytics_password@postgres:5432/analytics_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL:-}
+      - ALERT_EMAIL_SMTP_HOST=${ALERT_EMAIL_SMTP_HOST:-}
+      - ALERT_EMAIL_USERNAME=${ALERT_EMAIL_USERNAME:-}
+      - ALERT_EMAIL_PASSWORD=${ALERT_EMAIL_PASSWORD:-}
+    volumes:
+      - ./logs:/app/logs
+      - ./pids:/app/pids
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery worker - Reports queue
+  celery-worker-reports:
+    build: .
+    command: celery -A apps.worker.celery_app worker --loglevel=info --queues=reports --concurrency=2
+    environment:
+      - DATABASE_URL=postgresql://analytics_user:analytics_password@postgres:5432/analytics_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REPORT_OUTPUT_DIR=/tmp/reports
+      - ALERT_EMAIL_SMTP_HOST=${ALERT_EMAIL_SMTP_HOST:-}
+      - ALERT_EMAIL_USERNAME=${ALERT_EMAIL_USERNAME:-}
+      - ALERT_EMAIL_PASSWORD=${ALERT_EMAIL_PASSWORD:-}
+    volumes:
+      - ./logs:/app/logs
+      - ./pids:/app/pids
+      - /tmp/reports:/tmp/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery worker - Monitoring queue
+  celery-worker-monitoring:
+    build: .
+    command: celery -A apps.worker.celery_app worker --loglevel=info --queues=monitoring --concurrency=1
+    environment:
+      - DATABASE_URL=postgresql://analytics_user:analytics_password@postgres:5432/analytics_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PROMETHEUS_PORT=8002
+    volumes:
+      - ./logs:/app/logs
+      - ./pids:/app/pids
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat scheduler
+  celery-beat:
+    build: .
+    command: python beat.py
+    environment:
+      - DATABASE_URL=postgresql://analytics_user:analytics_password@postgres:5432/analytics_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DBT_PROJECT_PATH=/app/dbt
+    volumes:
+      - ./logs:/app/logs
+      - ./pids:/app/pids
+      - ../dbt:/app/dbt:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Flower monitoring
+  flower:
+    build: .
+    command: python flower.py
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_PORT=5555
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Prometheus metrics server
+  metrics-server:
+    build: .
+    command: python metrics_server.py
+    ports:
+      - "8000:8000"
+    environment:
+      - PROMETHEUS_PORT=8000
+    restart: unless-stopped
+
+  # Prometheus (optional - for metrics collection)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - metrics-server
+    restart: unless-stopped
+
+  # Grafana (optional - for dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
