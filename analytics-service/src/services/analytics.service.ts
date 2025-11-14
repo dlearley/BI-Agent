@@ -10,17 +10,50 @@ import {
   FacilityRevenue,
   MonthlyRevenue,
   ChannelMetrics,
-  ComplianceViolation
+  ComplianceViolation,
+  SecurityContext
 } from '../types';
 import config from '../config';
 import { applyHIPAARedaction, enforceMinimumThreshold } from '../middleware/hipaa';
+import { governanceService } from './governance.service';
+import { piiMaskingService } from './pii-masking.service';
+import { metricVersioningService } from './metric-versioning.service';
+import { applyRowLevelSecurity, applyColumnLevelSecurity } from '../middleware/rbac';
 
 export class AnalyticsService {
   private readonly cachePrefix = 'analytics:';
   private readonly defaultCacheTTL = config.analytics.cacheTTL;
 
-  async getPipelineKPIs(query: AnalyticsQuery, user: User): Promise<any> {
-    const cacheKey = this.generateCacheKey('pipeline', query, user);
+  private async createSecurityContext(user: User, framework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa'): Promise<SecurityContext> {
+    return await governanceService.applyCompliancePreset(framework, user);
+  }
+
+  private async applyGovernanceFilters(
+    data: any[], 
+    securityContext: SecurityContext,
+    restrictedColumns?: string[]
+  ): Promise<any[]> {
+    let filteredData = data;
+
+    // Apply column-level security
+    if (restrictedColumns && restrictedColumns.length > 0) {
+      filteredData = applyColumnLevelSecurity(filteredData, restrictedColumns);
+    }
+
+    // Apply PII masking
+    filteredData = filteredData.map(item => 
+      piiMaskingService.maskData(item, securityContext)
+    );
+
+    // Apply HIPAA minimum threshold enforcement
+    filteredData = filteredData.map(item => enforceMinimumThreshold(item));
+
+    return filteredData;
+  }
+
+  async getPipelineKPIs(query: AnalyticsQuery, user: User, complianceFramework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa'): Promise<any> {
+    const securityContext = await this.createSecurityContext(user, complianceFramework);
+    const cacheKey = this.generateCacheKey('pipeline', query, user, complianceFramework);
     
     // Try to get from cache first
     const cached = await redis.get(cacheKey);
@@ -31,6 +64,7 @@ export class AnalyticsService {
     let sql = `
       SELECT 
         facility_id,
+        facility_name,
         SUM(total_applications) as total_applications,
         SUM(hired_count) as hired_count,
         SUM(rejected_count) as rejected_count,
@@ -45,39 +79,54 @@ export class AnalyticsService {
     let paramIndex = 1;
 
     if (query.startDate) {
-      sql += ` AND month >= $${paramIndex++}`;
+      sql += ` AND month >= ${paramIndex++}`;
       params.push(query.startDate);
     }
 
     if (query.endDate) {
-      sql += ` AND month <= $${paramIndex++}`;
+      sql += ` AND month <= ${paramIndex++}`;
       params.push(query.endDate);
     }
 
-    // Apply facility scope filtering
-    if (user.role === 'recruiter' && user.facilityId) {
-      sql += ` AND facility_id = $${paramIndex++}`;
-      params.push(user.facilityId);
-    } else if (query.facilityId) {
-      sql += ` AND facility_id = $${paramIndex++}`;
-      params.push(query.facilityId);
+    // Apply row-level security
+    const rowFilter = this.buildRowLevelFilter(user, query);
+    if (rowFilter) {
+      sql += ` AND ${rowFilter}`;
     }
 
-    sql += ` GROUP BY facility_id`;
+    sql += ` GROUP BY facility_id, facility_name`;
 
-    const results = await db.query(sql, params);
+    // Apply row-level security to SQL
+    const secureSQL = applyRowLevelSecurity(sql, rowFilter);
+    const results = await db.query(secureSQL, params);
     
-    // Apply HIPAA compliance if needed
-    const processedResults = results.map(result => 
-      applyHIPAARedaction(result, user)
+    // Apply governance filters
+    const restrictedColumns = config.governance.columnLevelSecurity.enabled 
+      ? config.governance.columnLevelSecurity.restrictedColumns 
+      : [];
+    
+    const processedResults = await this.applyGovernanceFilters(
+      results, 
+      securityContext, 
+      restrictedColumns
     );
-    
-    const finalResults = enforceMinimumThreshold(processedResults);
+
+    // Create metric version if enabled
+    if (config.governance.metricVersioning.enabled) {
+      await metricVersioningService.createVersion(
+        'pipeline_kpis',
+        `pipeline_${user.facilityId || 'all'}_${Date.now()}`,
+        processedResults,
+        user,
+        'Pipeline KPIs query',
+        complianceFramework
+      );
+    }
 
     // Cache the results
-    await redis.set(cacheKey, finalResults, this.defaultCacheTTL);
+    await redis.set(cacheKey, processedResults, this.defaultCacheTTL);
 
-    return finalResults;
+    return processedResults;
   }
 
   async getComplianceMetrics(query: AnalyticsQuery, user: User): Promise<ComplianceMetrics[]> {
@@ -492,11 +541,31 @@ export class AnalyticsService {
     }));
   }
 
-  private generateCacheKey(type: string, query: AnalyticsQuery, user: User): string {
+  private buildRowLevelFilter(user: User, query: AnalyticsQuery): string {
+    // Admins can see all data
+    if (user.role === 'admin') {
+      return query.facilityId ? `facility_id = '${query.facilityId}'` : '';
+    }
+
+    // Recruiters and viewers are limited to their facility
+    if (user.facilityId) {
+      return `facility_id = '${user.facilityId}'`;
+    }
+
+    // Default deny policy
+    if (config.governance.rowLevelSecurity.defaultPolicy === 'deny') {
+      return '1 = 0';
+    }
+
+    return '';
+  }
+
+  private generateCacheKey(type: string, query: AnalyticsQuery, user: User, framework?: string): string {
     const queryString = JSON.stringify({
       ...query,
       userRole: user.role,
-      facilityId: user.facilityId
+      facilityId: user.facilityId,
+      framework
     });
     return `${this.cachePrefix}${type}:${Buffer.from(queryString).toString('base64')}`;
   }
