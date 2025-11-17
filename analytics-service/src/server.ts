@@ -6,7 +6,9 @@ import compression from 'compression';
 import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
+import { crmIngestionService } from './services/crm-ingestion.service';
 import analyticsRoutes from './routes/analytics';
+import crmIngestionRoutes from './routes/crm-ingestion';
 import config from './config';
 import logger from './utils/logger';
 import { requestContextMiddleware } from './observability/request-context';
@@ -66,6 +68,7 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
+app.use(`/api/${apiVersion}/crm-ingestion`, crmIngestionRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -127,6 +130,7 @@ async function startServer(): Promise<void> {
         logger.info('HTTP server closed');
         
         try {
+          await crmIngestionService.stop();
           await queueService.close();
           logger.info('Queue service closed');
           

@@ -117,9 +117,38 @@ export interface RedisConfig {
   db?: number;
 }
 
+export interface KafkaConfig {
+  clientId: string;
+  brokers: string[];
+  ssl: boolean;
+  sasl: {
+    mechanism: string;
+    username?: string;
+    password?: string;
+  };
+  schemaRegistry: {
+    url: string;
+    username?: string;
+    password?: string;
+  };
+  topics: {
+    crmEvents: string;
+    crmLeads: string;
+    crmContacts: string;
+    crmOpportunities: string;
+  };
+  consumer: {
+    groupId: string;
+    sessionTimeout: number;
+    heartbeatInterval: number;
+    maxWaitTimeInMs: number;
+  };
+}
+
 export interface AppConfig {
   database: DatabaseConfig;
   redis: RedisConfig;
+  kafka: KafkaConfig;
   jwt: {
     secret: string;
     expiresIn: string;
@@ -372,4 +401,93 @@ export interface SecurityContext {
   auditRequired: boolean;
   piiAccess: boolean;
   facilityScope?: string;
+}
+
+// CRM Event Types
+export interface CRMEvent {
+  id: string;
+  eventId: string;
+  eventType: CRMEventType;
+  organizationId: string;
+  timestamp: Date;
+  data: any;
+  metadata?: {
+    source: string;
+    version: string;
+    correlationId?: string;
+  };
+}
+
+export enum CRMEventType {
+  LEAD_CREATED = 'lead.created',
+  LEAD_UPDATED = 'lead.updated',
+  LEAD_CONVERTED = 'lead.converted',
+  CONTACT_CREATED = 'contact.created',
+  CONTACT_UPDATED = 'contact.updated',
+  OPPORTUNITY_CREATED = 'opportunity.created',
+  OPPORTUNITY_UPDATED = 'opportunity.updated',
+  OPPORTUNITY_WON = 'opportunity.won',
+  OPPORTUNITY_LOST = 'opportunity.lost',
+}
+
+export interface CRMLead {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  source: string;
+  status: string;
+  score?: number;
+  assignedTo?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  organizationId: string;
+}
+
+export interface CRMContact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  leadId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  organizationId: string;
+}
+
+export interface CRMOpportunity {
+  id: string;
+  name: string;
+  leadId?: string;
+  contactId?: string;
+  amount: number;
+  currency: string;
+  stage: string;
+  probability: number;
+  expectedCloseDate: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  organizationId: string;
+}
+
+export interface IngestionJobData extends JobData {
+  type: 'crm_ingestion';
+  topic: string;
+  partition?: number;
+  offset?: number;
+}
+
+export interface IngestionResult extends JobResult {
+  metrics: {
+    eventsProcessed: number;
+    eventsSkipped: number;
+    errors: number;
+    processingTimeMs: number;
+  };
 }

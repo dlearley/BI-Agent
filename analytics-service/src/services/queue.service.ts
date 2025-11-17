@@ -2,15 +2,21 @@ import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import config from '../config';
 import { analyticsService } from './analytics.service';
-import { JobData, JobResult } from '../types';
+import { crmIngestionService } from './crm-ingestion.service';
+import { JobData, JobResult, IngestionJobData, IngestionResult } from '../types';
 
 interface AnalyticsJob extends Job<JobData> {
   data: JobData;
 }
 
+interface CRMIngestionJob extends Job<IngestionJobData> {
+  data: IngestionJobData;
+}
+
 export class QueueService {
   private connection: Redis;
   private analyticsQueue: Queue;
+  private crmIngestionQueue: Queue;
   private worker!: Worker;
 
   constructor() {
@@ -29,28 +35,45 @@ export class QueueService {
       },
     });
 
+    this.crmIngestionQueue = new Queue('crm-ingestion-queue', {
+      connection: this.connection,
+      defaultJobOptions: {
+        removeOnComplete: 200,
+        removeOnFail: 100,
+        attempts: 5,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      },
+    });
+
     this.setupWorker();
     this.setupScheduledJobs();
   }
 
   private setupWorker(): void {
     this.worker = new Worker(
-      'analytics-queue',
-      async (job: Job<JobData>) => {
-        return this.processAnalyticsJob(job);
+      ['analytics-queue', 'crm-ingestion-queue'],
+      async (job: Job<JobData | IngestionJobData>) => {
+        if (job.data.type === 'crm_ingestion') {
+          return this.processCRMIngestionJob(job as CRMIngestionJob);
+        } else {
+          return this.processAnalyticsJob(job as AnalyticsJob);
+        }
       },
       {
         connection: this.connection,
-        concurrency: 2,
+        concurrency: 3,
       }
     );
 
-    this.worker.on('completed', (job: AnalyticsJob, result: JobResult) => {
-      console.log(`Analytics job ${job.id} completed:`, result);
+    this.worker.on('completed', (job: AnalyticsJob | CRMIngestionJob, result: JobResult | IngestionResult) => {
+      console.log(`Job ${job.id} completed:`, result);
     });
 
-    this.worker.on('failed', (job: AnalyticsJob | undefined, err: Error) => {
-      console.error(`Analytics job ${job?.id || 'unknown'} failed:`, err);
+    this.worker.on('failed', (job: AnalyticsJob | CRMIngestionJob | undefined, err: Error) => {
+      console.error(`Job ${job?.id || 'unknown'} failed:`, err);
     });
   }
 
@@ -96,6 +119,52 @@ export class QueueService {
     }
   }
 
+  private async processCRMIngestionJob(job: CRMIngestionJob): Promise<IngestionResult> {
+    const startTime = Date.now();
+    const { topic, partition, offset } = job.data;
+
+    try {
+      // Start the CRM ingestion service if not already running
+      await crmIngestionService.start();
+
+      // Get metrics after processing
+      const metrics = await crmIngestionService.getIngestionMetrics();
+
+      const processingTime = Date.now() - startTime;
+
+      return {
+        success: true,
+        message: `CRM ingestion job completed successfully for topic: ${topic}`,
+        data: {
+          topic,
+          partition,
+          offset,
+          metrics,
+        },
+        metrics: {
+          eventsProcessed: metrics.processed_events || 0,
+          eventsSkipped: metrics.skipped_events || 0,
+          errors: metrics.failed_events || 0,
+          processingTimeMs: processingTime,
+        },
+      };
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      
+      return {
+        success: false,
+        message: `Failed to process CRM ingestion job for topic: ${topic}`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        metrics: {
+          eventsProcessed: 0,
+          eventsSkipped: 0,
+          errors: 1,
+          processingTimeMs: processingTime,
+        },
+      };
+    }
+  }
+
   private setupScheduledJobs(): void {
     // Schedule full analytics refresh every hour
     this.analyticsQueue.add(
@@ -134,6 +203,28 @@ export class QueueService {
     };
 
     return await this.analyticsQueue.add('refresh_analytics', jobData, jobOptions);
+  }
+
+  async enqueueCRMIngestionJob(
+    topic: string,
+    partition?: number,
+    offset?: number,
+    delay?: number
+  ): Promise<Job<IngestionJobData>> {
+    const jobData: IngestionJobData = {
+      type: 'crm_ingestion',
+      topic,
+      partition,
+      offset,
+    };
+
+    const jobOptions: any = {
+      delay: delay || 0,
+      removeOnComplete: 200,
+      removeOnFail: 100,
+    };
+
+    return await this.crmIngestionQueue.add('crm_ingestion', jobData, jobOptions);
   }
 
   async getJobStatus(jobId: string): Promise<any> {
@@ -186,6 +277,7 @@ export class QueueService {
   async close(): Promise<void> {
     await this.worker.close();
     await this.analyticsQueue.close();
+    await this.crmIngestionQueue.close();
     await this.connection.quit();
   }
 }
