@@ -596,6 +596,148 @@ class SeedService {
     console.log('✅ Updated customer totals');
   }
 
+  async seedCRMData(): Promise<void> {
+    console.log('🌱 Seeding CRM data...');
+
+    if (!this.organizationId) {
+      await this.seedOrganization();
+    }
+
+    // Get or use demo customers as accounts
+    const customers = await db.query<{ id: string; email: string; first_name: string; last_name: string }>(
+      'SELECT id, email, first_name, last_name FROM customers WHERE organization_id = $1 LIMIT 5',
+      [this.organizationId]
+    );
+
+    // Seed Accounts
+    const accountsData = [
+      { name: 'Acme Corporation', industry: 'Technology', company_size: 'Enterprise', annual_revenue: 50000000, website: 'https://acme.com', phone: '+1-555-0101', account_status: 'customer', account_owner: 'Alice Johnson' },
+      { name: 'GlobalTech Solutions', industry: 'Software', company_size: 'Large', annual_revenue: 25000000, website: 'https://globaltech.com', phone: '+1-555-0102', account_status: 'customer', account_owner: 'Bob Smith' },
+      { name: 'InnovateCo', industry: 'Technology', company_size: 'Medium', annual_revenue: 5000000, website: 'https://innovateco.com', phone: '+1-555-0103', account_status: 'prospect', account_owner: 'Alice Johnson' },
+      { name: 'TechStart Inc', industry: 'Startup', company_size: 'Small', annual_revenue: 500000, website: 'https://techstart.com', phone: '+1-555-0104', account_status: 'prospect', account_owner: 'Charlie Brown' },
+      { name: 'Enterprise Solutions Ltd', industry: 'Consulting', company_size: 'Large', annual_revenue: 15000000, website: 'https://entsolutions.com', phone: '+1-555-0105', account_status: 'churned', account_owner: 'Bob Smith' },
+    ];
+
+    const accountIds: string[] = [];
+    for (const account of accountsData) {
+      const result = await db.queryOne<{ id: string }>(
+        `INSERT INTO accounts (organization_id, name, industry, company_size, annual_revenue, website, phone, account_status, account_owner)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (organization_id, name) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+         RETURNING id`,
+        [this.organizationId, account.name, account.industry, account.company_size, account.annual_revenue, account.website, account.phone, account.account_status, account.account_owner]
+      );
+      if (result) accountIds.push(result.id);
+    }
+    console.log(`✅ Created ${accountIds.length} accounts`);
+
+    // Seed Contacts
+    const contactsData = [
+      { account_idx: 0, first_name: 'John', last_name: 'Doe', email: 'john.doe@acme.com', phone: '+1-555-1001', job_title: 'CEO', department: 'Executive', is_primary: true, contact_status: 'active' },
+      { account_idx: 0, first_name: 'Jane', last_name: 'Smith', email: 'jane.smith@acme.com', phone: '+1-555-1002', job_title: 'CTO', department: 'Technology', is_primary: false, contact_status: 'active' },
+      { account_idx: 1, first_name: 'Michael', last_name: 'Johnson', email: 'michael.j@globaltech.com', phone: '+1-555-1003', job_title: 'VP Sales', department: 'Sales', is_primary: true, contact_status: 'active' },
+      { account_idx: 1, first_name: 'Sarah', last_name: 'Williams', email: 'sarah.w@globaltech.com', phone: '+1-555-1004', job_title: 'Director of Operations', department: 'Operations', is_primary: false, contact_status: 'active' },
+      { account_idx: 2, first_name: 'David', last_name: 'Brown', email: 'david.b@innovateco.com', phone: '+1-555-1005', job_title: 'Founder', department: 'Executive', is_primary: true, contact_status: 'active' },
+      { account_idx: 3, first_name: 'Emily', last_name: 'Davis', email: 'emily.d@techstart.com', phone: '+1-555-1006', job_title: 'Product Manager', department: 'Product', is_primary: true, contact_status: 'active' },
+      { account_idx: 4, first_name: 'Robert', last_name: 'Miller', email: 'robert.m@entsolutions.com', phone: '+1-555-1007', job_title: 'CFO', department: 'Finance', is_primary: true, contact_status: 'inactive' },
+    ];
+
+    const contactIds: string[] = [];
+    for (const contact of contactsData) {
+      const result = await db.queryOne<{ id: string }>(
+        `INSERT INTO contacts (organization_id, account_id, first_name, last_name, email, phone, job_title, department, is_primary, contact_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         ON CONFLICT (organization_id, email) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+         RETURNING id`,
+        [this.organizationId, accountIds[contact.account_idx], contact.first_name, contact.last_name, contact.email, contact.phone, contact.job_title, contact.department, contact.is_primary, contact.contact_status]
+      );
+      if (result) contactIds.push(result.id);
+    }
+    console.log(`✅ Created ${contactIds.length} contacts`);
+
+    // Seed Deals
+    const dealsData = [
+      { account_idx: 0, contact_idx: 0, name: 'Enterprise License Deal', amount: 150000, stage: 'negotiation', probability: 80, expected_close_date: new Date('2024-01-15'), deal_owner: 'Alice Johnson', lead_source: 'Referral' },
+      { account_idx: 0, contact_idx: 1, name: 'Professional Services', amount: 75000, stage: 'proposal', probability: 60, expected_close_date: new Date('2024-01-30'), deal_owner: 'Alice Johnson', lead_source: 'Existing Customer' },
+      { account_idx: 1, contact_idx: 2, name: 'Annual Subscription Renewal', amount: 200000, stage: 'closed_won', probability: 100, expected_close_date: new Date('2023-12-01'), actual_close_date: new Date('2023-12-01'), deal_owner: 'Bob Smith', lead_source: 'Renewal' },
+      { account_idx: 2, contact_idx: 4, name: 'Pilot Program', amount: 25000, stage: 'qualification', probability: 40, expected_close_date: new Date('2024-02-15'), deal_owner: 'Alice Johnson', lead_source: 'Website' },
+      { account_idx: 3, contact_idx: 5, name: 'Startup Package', amount: 15000, stage: 'prospecting', probability: 20, expected_close_date: new Date('2024-03-01'), deal_owner: 'Charlie Brown', lead_source: 'Cold Outreach' },
+      { account_idx: 4, contact_idx: 6, name: 'Enterprise Upgrade', amount: 100000, stage: 'closed_lost', probability: 0, expected_close_date: new Date('2023-11-15'), actual_close_date: new Date('2023-11-20'), deal_owner: 'Bob Smith', lead_source: 'Existing Customer' },
+    ];
+
+    const dealIds: string[] = [];
+    for (const deal of dealsData) {
+      const result = await db.queryOne<{ id: string }>(
+        `INSERT INTO deals (organization_id, account_id, contact_id, name, amount, stage, probability, expected_close_date, actual_close_date, deal_owner, lead_source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING id`,
+        [this.organizationId, accountIds[deal.account_idx], contactIds[deal.contact_idx], deal.name, deal.amount, deal.stage, deal.probability, deal.expected_close_date, deal.actual_close_date || null, deal.deal_owner, deal.lead_source]
+      );
+      if (result) dealIds.push(result.id);
+    }
+    console.log(`✅ Created ${dealIds.length} deals`);
+
+    // Seed Deal Stage History
+    const stageHistoryData = [
+      { deal_idx: 0, stage: 'prospecting', previous_stage: null, days_in_stage: 0, changed_at: new Date('2023-11-01'), changed_by: 'Alice Johnson' },
+      { deal_idx: 0, stage: 'qualification', previous_stage: 'prospecting', days_in_stage: 7, changed_at: new Date('2023-11-08'), changed_by: 'Alice Johnson' },
+      { deal_idx: 0, stage: 'proposal', previous_stage: 'qualification', days_in_stage: 14, changed_at: new Date('2023-11-22'), changed_by: 'Alice Johnson' },
+      { deal_idx: 0, stage: 'negotiation', previous_stage: 'proposal', days_in_stage: 21, changed_at: new Date('2023-12-13'), changed_by: 'Alice Johnson' },
+      { deal_idx: 2, stage: 'prospecting', previous_stage: null, days_in_stage: 0, changed_at: new Date('2023-10-01'), changed_by: 'Bob Smith' },
+      { deal_idx: 2, stage: 'qualification', previous_stage: 'prospecting', days_in_stage: 5, changed_at: new Date('2023-10-06'), changed_by: 'Bob Smith' },
+      { deal_idx: 2, stage: 'proposal', previous_stage: 'qualification', days_in_stage: 10, changed_at: new Date('2023-10-16'), changed_by: 'Bob Smith' },
+      { deal_idx: 2, stage: 'negotiation', previous_stage: 'proposal', days_in_stage: 15, changed_at: new Date('2023-10-31'), changed_by: 'Bob Smith' },
+      { deal_idx: 2, stage: 'closed_won', previous_stage: 'negotiation', days_in_stage: 31, changed_at: new Date('2023-12-01'), changed_by: 'Bob Smith' },
+    ];
+
+    for (const history of stageHistoryData) {
+      await db.query(
+        `INSERT INTO deal_stage_history (deal_id, stage, previous_stage, days_in_stage, changed_at, changed_by)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [dealIds[history.deal_idx], history.stage, history.previous_stage, history.days_in_stage, history.changed_at, history.changed_by]
+      );
+    }
+    console.log(`✅ Created ${stageHistoryData.length} deal stage history records`);
+
+    // Seed Activities
+    const activitiesData = [
+      { account_idx: 0, contact_idx: 0, deal_idx: 0, activity_type: 'call', subject: 'Discovery Call', duration_minutes: 45, outcome: 'Positive - interested in enterprise features', activity_date: new Date('2023-11-02'), assigned_to: 'Alice Johnson', completed: true },
+      { account_idx: 0, contact_idx: 0, deal_idx: 0, activity_type: 'meeting', subject: 'Product Demo', duration_minutes: 60, outcome: 'Success - requested proposal', activity_date: new Date('2023-11-15'), assigned_to: 'Alice Johnson', completed: true },
+      { account_idx: 0, contact_idx: 1, deal_idx: 0, activity_type: 'email', subject: 'Technical Requirements Follow-up', outcome: 'Positive response', activity_date: new Date('2023-11-20'), assigned_to: 'Alice Johnson', completed: true },
+      { account_idx: 1, contact_idx: 2, deal_idx: 2, activity_type: 'call', subject: 'Renewal Discussion', duration_minutes: 30, outcome: 'Agreed to renew', activity_date: new Date('2023-11-25'), assigned_to: 'Bob Smith', completed: true },
+      { account_idx: 2, contact_idx: 4, deal_idx: null, activity_type: 'meeting', subject: 'Initial Consultation', duration_minutes: 45, outcome: 'Interested in pilot', activity_date: new Date('2023-12-05'), assigned_to: 'Alice Johnson', completed: true },
+      { account_idx: 3, contact_idx: 5, deal_idx: 4, activity_type: 'email', subject: 'Startup Package Information', outcome: 'No response yet', activity_date: new Date('2023-12-10'), assigned_to: 'Charlie Brown', completed: false },
+    ];
+
+    for (const activity of activitiesData) {
+      await db.query(
+        `INSERT INTO activities (organization_id, account_id, contact_id, deal_id, activity_type, subject, duration_minutes, outcome, activity_date, assigned_to, completed)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [this.organizationId, accountIds[activity.account_idx], contactIds[activity.contact_idx], activity.deal_idx !== null ? dealIds[activity.deal_idx] : null, activity.activity_type, activity.subject, activity.duration_minutes, activity.outcome, activity.activity_date, activity.assigned_to, activity.completed]
+      );
+    }
+    console.log(`✅ Created ${activitiesData.length} activities`);
+
+    // Seed Tickets
+    const ticketsData = [
+      { account_idx: 0, contact_idx: 0, ticket_number: 'TICK-1001', subject: 'Login issues with SSO', priority: 'high', status: 'resolved', category: 'Technical', assigned_to: 'Support Team A', created_at: new Date('2023-12-01'), resolved_at: new Date('2023-12-01T18:30:00') },
+      { account_idx: 0, contact_idx: 1, ticket_number: 'TICK-1002', subject: 'Feature request: API rate limit increase', priority: 'medium', status: 'in_progress', category: 'Feature Request', assigned_to: 'Support Team B', created_at: new Date('2023-12-05'), resolved_at: null },
+      { account_idx: 1, contact_idx: 2, ticket_number: 'TICK-1003', subject: 'Billing discrepancy', priority: 'urgent', status: 'closed', category: 'Billing', assigned_to: 'Support Team A', created_at: new Date('2023-11-28'), resolved_at: new Date('2023-11-28T16:00:00'), closed_at: new Date('2023-11-29T10:00:00') },
+      { account_idx: 1, contact_idx: 3, ticket_number: 'TICK-1004', subject: 'Training resources needed', priority: 'low', status: 'resolved', category: 'Training', assigned_to: 'Support Team C', created_at: new Date('2023-11-20'), resolved_at: new Date('2023-11-25T14:00:00') },
+      { account_idx: 2, contact_idx: 4, ticket_number: 'TICK-1005', subject: 'Cannot access dashboard', priority: 'high', status: 'open', category: 'Technical', assigned_to: 'Support Team A', created_at: new Date('2023-12-10'), resolved_at: null },
+    ];
+
+    for (const ticket of ticketsData) {
+      await db.query(
+        `INSERT INTO tickets (organization_id, account_id, contact_id, ticket_number, subject, priority, status, category, assigned_to, created_at, resolved_at, closed_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $10)
+         ON CONFLICT (organization_id, ticket_number) DO NOTHING`,
+        [this.organizationId, accountIds[ticket.account_idx], contactIds[ticket.contact_idx], ticket.ticket_number, ticket.subject, ticket.priority, ticket.status, ticket.category, ticket.assigned_to, ticket.created_at, ticket.resolved_at, ticket.closed_at || null]
+      );
+    }
+    console.log(`✅ Created ${ticketsData.length} support tickets`);
+  }
+
   async seedCelerySchedules(): Promise<number> {
     console.log('🌱 Seeding Celery-style schedules...');
 
@@ -733,7 +875,13 @@ class SeedService {
       'customers',
       'products',
       'orders',
-      'order_items'
+      'order_items',
+      'accounts',
+      'contacts',
+      'deals',
+      'deal_stage_history',
+      'activities',
+      'tickets'
     ];
 
     const results: SeedResult[] = [];
@@ -762,6 +910,7 @@ class SeedService {
       await this.seedAlerts(queryIds);
       await this.seedReportTemplates();
       await this.seedEcommerceData();
+      await this.seedCRMData();
       const scheduleCount = await this.seedCelerySchedules();
 
       console.log(`✅ Celery schedules ensured: ${scheduleCount}`);

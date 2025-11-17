@@ -1,0 +1,142 @@
+version: 2
+
+models:
+  - name: dim_accounts
+    description: |
+      Dimension table for CRM accounts (companies/organizations).
+      Type 1 SCD - current state only, overwrites on change.
+      Includes account categorization and revenue segmentation.
+    columns:
+      - name: account_id
+        description: Unique identifier for the account (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this account
+        tests:
+          - not_null
+      - name: account_name
+        description: Name of the account/company
+        tests:
+          - not_null
+      - name: industry
+        description: Industry or vertical the account operates in
+      - name: company_size
+        description: Size classification of the company
+      - name: annual_revenue
+        description: Annual revenue of the account
+      - name: account_status
+        description: Current status of the account
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['active', 'inactive', 'prospect', 'customer', 'churned']
+      - name: account_category
+        description: High-level categorization of account (Customer, Prospect, Churned, Inactive)
+        tests:
+          - not_null
+      - name: revenue_segment
+        description: Segmentation based on annual revenue (Small, Medium, Large, Enterprise, Unknown)
+        tests:
+          - not_null
+      - name: account_owner
+        description: Sales rep or account manager responsible for this account
+      - name: dw_updated_at
+        description: Timestamp when this record was last updated in the data warehouse
+        tests:
+          - not_null
+
+  - name: dim_contacts
+    description: |
+      Dimension table for CRM contacts (individuals).
+      Type 1 SCD - current state only, overwrites on change.
+      Includes seniority level classification and account relationship.
+    columns:
+      - name: contact_id
+        description: Unique identifier for the contact (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this contact
+        tests:
+          - not_null
+      - name: account_id
+        description: Reference to the associated account
+      - name: account_name
+        description: Name of the associated account (denormalized for convenience)
+      - name: full_name
+        description: Full name of the contact
+        tests:
+          - not_null
+      - name: email
+        description: Contact email address
+        tests:
+          - not_null
+      - name: job_title
+        description: Job title of the contact
+      - name: department
+        description: Department the contact works in
+      - name: is_primary
+        description: Boolean indicating if this is the primary contact for the account
+      - name: contact_status
+        description: Current status of the contact
+        tests:
+          - not_null
+      - name: seniority_level
+        description: Derived seniority level based on job title (C-Level, VP, Director, Manager, IC)
+        tests:
+          - not_null
+      - name: dw_updated_at
+        description: Timestamp when this record was last updated in the data warehouse
+        tests:
+          - not_null
+
+  - name: dim_products
+    description: |
+      Dimension table for products.
+      Type 1 SCD - current state only, overwrites on change.
+      Includes profit margins, inventory status, and price tier classification.
+    columns:
+      - name: product_id
+        description: Unique identifier for the product (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this product
+        tests:
+          - not_null
+      - name: product_name
+        description: Name of the product
+        tests:
+          - not_null
+      - name: sku
+        description: Stock keeping unit (product code)
+      - name: category
+        description: Product category
+      - name: price
+        description: Current selling price
+        tests:
+          - not_null
+      - name: cost
+        description: Cost of the product
+      - name: profit_per_unit
+        description: Calculated profit per unit (price - cost)
+      - name: margin_percentage
+        description: Profit margin percentage
+      - name: inventory_quantity
+        description: Current inventory level
+      - name: inventory_status
+        description: Classified inventory status (Out of Stock, Low Stock, Normal Stock, High Stock)
+        tests:
+          - not_null
+      - name: price_tier
+        description: Price tier classification (Budget, Mid-Range, Premium, Luxury)
+        tests:
+          - not_null
+      - name: dw_updated_at
+        description: Timestamp when this record was last updated in the data warehouse
+        tests:
+          - not_null
