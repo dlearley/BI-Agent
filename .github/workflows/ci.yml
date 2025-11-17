@@ -426,3 +426,5 @@ jobs:
             exit 1
           fi
           echo "✅ All checks passed!"
+          echo ""
+          echo "Note: DBT data quality and load tests run in separate workflows"
