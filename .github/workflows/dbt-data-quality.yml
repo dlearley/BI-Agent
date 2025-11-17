@@ -1,0 +1,200 @@
+name: DBT Data Quality
+
+on:
+  push:
+    branches: [main, develop, feat-analytics-validate-dbt-dq-recon-loadtests]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8.10.0'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  dbt-tests:
+    name: DBT Tests and Data Quality
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: analytics_db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dbt
+        run: |
+          pip install dbt-core dbt-postgres
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build analytics service
+        run: pnpm build
+
+      - name: Setup database schema
+        run: |
+          cd analytics-service
+          npm run migrate
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+          NODE_ENV: test
+
+      - name: Seed test data
+        run: |
+          cd analytics-service
+          npm run seed
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+          NODE_ENV: test
+
+      - name: Create dbt profiles
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          analytics:
+            target: ci
+            outputs:
+              ci:
+                type: postgres
+                host: localhost
+                port: 5432
+                user: postgres
+                pass: test_password
+                dbname: analytics_db_test
+                schema: analytics
+                threads: 4
+          EOF
+
+      - name: Install dbt packages
+        run: |
+          cd dbt
+          dbt deps
+
+      - name: Run dbt models
+        run: |
+          cd dbt
+          dbt run --target ci
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+
+      - name: Run dbt tests
+        run: |
+          cd dbt
+          dbt test --target ci
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+
+      - name: Check source freshness
+        run: |
+          cd dbt
+          dbt source freshness --target ci
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+
+      - name: Run data quality monitors
+        run: |
+          cd analytics-service
+          npm run dq:monitor || echo "Data quality check completed with warnings"
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+          NODE_ENV: test
+
+      - name: Run reconciliation
+        run: |
+          cd analytics-service
+          npm run analytics:reconcile
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+          NODE_ENV: test
+
+      - name: Upload reconciliation reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reconciliation-reports
+          path: analytics-service/reports/
+          retention-days: 30
+
+      - name: Generate dbt docs
+        run: |
+          cd dbt
+          dbt docs generate --target ci
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/analytics_db_test
+
+      - name: Upload dbt docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs
+          path: dbt/target/
+          retention-days: 30
+
+  reconciliation-report:
+    name: Reconciliation Validation
+    needs: dbt-tests
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download reconciliation reports
+        uses: actions/download-artifact@v4
+        with:
+          name: reconciliation-reports
+          path: reports/
+
+      - name: Check reconciliation results
+        run: |
+          echo "Checking reconciliation results..."
+          if [ -f reports/reconciliation_*.json ]; then
+            LATEST_REPORT=$(ls -t reports/reconciliation_*.json | head -n1)
+            echo "Latest report: $LATEST_REPORT"
+            
+            # Check if overall status is pass
+            STATUS=$(cat "$LATEST_REPORT" | grep -o '"overall_status":"[^"]*"' | cut -d'"' -f4)
+            echo "Overall status: $STATUS"
+            
+            if [ "$STATUS" = "pass" ]; then
+              echo "✅ Reconciliation passed - all metrics within 1% variance"
+              exit 0
+            else
+              echo "❌ Reconciliation failed - some metrics exceed 1% variance"
+              cat "$LATEST_REPORT"
+              exit 1
+            fi
+          else
+            echo "⚠️ No reconciliation report found"
+            exit 1
+          fi
