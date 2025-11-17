@@ -33,6 +33,32 @@ const config: AppConfig = {
   mlService: {
     url: process.env.ML_SERVICE_URL || 'http://localhost:8000',
     timeout: parseInt(process.env.ML_SERVICE_TIMEOUT || '30000'),
+  },
+  exports: {
+    s3: {
+      bucket: process.env.S3_BUCKET || 'analytics-exports',
+      region: process.env.S3_REGION || 'us-east-1',
+      accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+      endpoint: process.env.S3_ENDPOINT, // Optional for S3-compatible services
+    },
+    email: {
+      smtpHost: process.env.SMTP_HOST || 'localhost',
+      smtpPort: parseInt(process.env.SMTP_PORT || '587'),
+      smtpUser: process.env.SMTP_USER || '',
+      smtpPassword: process.env.SMTP_PASSWORD || '',
+      fromEmail: process.env.FROM_EMAIL || 'analytics@example.com',
+      fromName: process.env.FROM_NAME || 'Analytics Service',
+    },
+    slack: {
+      botToken: process.env.SLACK_BOT_TOKEN || '',
+      signingSecret: process.env.SLACK_SIGNING_SECRET || '',
+      webhookUrl: process.env.SLACK_WEBHOOK_URL,
+    },
+    maxFileSize: parseInt(process.env.EXPORT_MAX_FILE_SIZE || '104857600'), // 100MB
+    signedUrlTTL: parseInt(process.env.EXPORT_SIGNED_URL_TTL || '3600'), // 1 hour
+    retentionDays: parseInt(process.env.EXPORT_RETENTION_DAYS || '90'),
+  },
   governance: {
     auditLog: {
       enabled: process.env.AUDIT_LOG_ENABLED !== 'false',

@@ -13,10 +13,12 @@ import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
 import { governanceService } from './services/governance.service';
 import { metricVersioningService } from './services/metric-versioning.service';
+import { exportSchedulerService } from './services/export-scheduler.service';
 import analyticsRoutes from './routes/analytics';
 import forecastRoutes from './routes/forecast';
 import insightsRoutes from './routes/insights';
 import governanceRoutes from './routes/governance';
+import exportRoutes from './routes/exports';
 import config from './config';
 
 const app: express.Application = express();
@@ -68,6 +70,9 @@ app.get('/health', async (req, res) => {
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
 app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
+app.use(`/api/${apiVersion}/insights`, insightsRoutes);
+app.use(`/api/${apiVersion}/governance`, governanceRoutes);
+app.use(`/api/${apiVersion}/exports`, exportRoutes);
 
 // Serve static files for the forecast UI
 app.use('/js', express.static(path.join(__dirname, '../public/js')));
@@ -106,6 +111,9 @@ async function startServer(): Promise<void> {
     // Initialize governance tables
     await governanceService.initializeTables();
     await metricVersioningService.initializeTable();
+
+    // Start export scheduler
+    await exportSchedulerService.startScheduler();
 
     // Test Redis connection
     const redisHealthy = await redis.healthCheck();
