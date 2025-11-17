@@ -1,0 +1,280 @@
+version: 2
+
+exposures:
+  - name: crm_weighted_pipeline
+    type: dashboard
+    maturity: production
+    owner:
+      name: Sales Operations
+      email: sales-ops@company.com
+    description: >
+      Weighted pipeline scenarios with forecast calculations and scenario toggles.
+      Provides visibility into pipeline health with weighted opportunities by stage.
+    criticality: high
+    metrics:
+      - weighted_pipeline_value
+      - avg_win_probability
+    depends_on:
+      - ref('weighted_pipeline_scenarios')
+    tags:
+      - crm
+      - pipeline
+      - forecast
+
+  - name: crm_conversion_funnel
+    type: dashboard
+    maturity: production
+    owner:
+      name: Sales Leadership
+      email: sales-leadership@company.com
+    description: >
+      Lead to Won conversion funnel tracking progression through sales pipeline.
+      Monitors conversion rates at each stage: Lead → SQL → Opportunity → Won.
+    criticality: high
+    metrics:
+      - conversion_rate_from_previous
+      - stage_count
+    depends_on:
+      - ref('conversion_funnel')
+    tags:
+      - crm
+      - sales
+      - funnel
+
+  - name: crm_cohort_retention
+    type: dashboard
+    maturity: production
+    owner:
+      name: Revenue Operations
+      email: revops@company.com
+    description: >
+      Cohort retention and progression analysis. Tracks lead cohorts from creation
+      through closure with monthly retention rates and progression to later stages.
+    criticality: medium
+    metrics:
+      - retention_rate_pct
+      - progression_rate_pct
+    depends_on:
+      - ref('cohort_retention')
+    tags:
+      - crm
+      - retention
+      - cohort
+
+  - name: rep_activity_dashboard
+    type: dashboard
+    maturity: production
+    owner:
+      name: Sales Management
+      email: sales-mgmt@company.com
+    description: >
+      Sales representative activity and effectiveness by outreach channel.
+      Tracks response rates, conversion rates, and channel performance per rep.
+    criticality: medium
+    metrics:
+      - response_rate_pct
+      - conversion_rate_pct
+      - total_outreach
+    depends_on:
+      - ref('rep_activity_by_channel')
+    tags:
+      - crm
+      - activity
+      - channel
+
+  - name: support_sla_monitoring
+    type: dashboard
+    maturity: production
+    owner:
+      name: Customer Success
+      email: customer-success@company.com
+    description: >
+      Ticket SLA compliance and response time monitoring. Tracks SLA performance
+      by priority level with response and resolution time metrics.
+    criticality: high
+    metrics:
+      - sla_compliance_rate_pct
+      - avg_first_response_hours
+      - avg_resolution_hours
+    depends_on:
+      - ref('ticket_sla_compliance')
+    tags:
+      - support
+      - sla
+      - operations
+
+  - name: customer_satisfaction_analytics
+    type: dashboard
+    maturity: production
+    owner:
+      name: Customer Success
+      email: customer-success@company.com
+    description: >
+      CSAT and NPS rollups with trend analysis. Aggregates customer satisfaction
+      scores monthly with promoter/detractor rates and month-over-month changes.
+    criticality: high
+    metrics:
+      - avg_score
+      - promoter_or_satisfaction_pct
+      - detractor_rate_pct
+    depends_on:
+      - ref('satisfaction_rollups')
+    tags:
+      - satisfaction
+      - nps
+      - csat
+
+  - name: facility_health_scorecard
+    type: dashboard
+    maturity: production
+    owner:
+      name: Executive Leadership
+      email: leadership@company.com
+    description: >
+      Comprehensive facility health scores combining compliance, pipeline,
+      conversion, SLA, and satisfaction metrics into overall health status.
+    criticality: critical
+    metrics:
+      - overall_health_score
+      - compliance_score
+      - pipeline_health
+    depends_on:
+      - ref('health_scores')
+    tags:
+      - health
+      - scorecard
+      - executive
+
+models:
+  - name: weighted_pipeline_scenarios
+    description: Pipeline opportunities weighted by stage and win probability
+    meta:
+      owner: Sales Operations
+      criticality: high
+    columns:
+      - name: facility_id
+        description: Facility identifier
+      - name: rep_id
+        description: Sales rep identifier
+      - name: stage
+        description: Pipeline stage (lead, sql, opportunity, won, lost)
+      - name: total_pipeline_value
+        description: Total unweighted pipeline value in dollars
+      - name: weighted_pipeline_value
+        description: Pipeline value weighted by stage and win probability
+      - name: avg_win_probability
+        description: Average win probability for opportunities in stage
+
+  - name: conversion_funnel
+    description: Sales pipeline conversion funnel tracking lead progression to won
+    meta:
+      owner: Sales Leadership
+      criticality: high
+    columns:
+      - name: facility_id
+        description: Facility identifier
+      - name: rep_id
+        description: Sales rep identifier
+      - name: funnel_stage
+        description: Pipeline stage in funnel (lead, sql, opportunity, won)
+      - name: stage_count
+        description: Number of leads/opportunities in this stage
+      - name: conversion_rate_pct
+        description: Percentage conversion from previous stage
+
+  - name: cohort_retention
+    description: Lead cohort retention and progression analysis by month
+    meta:
+      owner: Revenue Operations
+      criticality: medium
+    columns:
+      - name: facility_id
+        description: Facility identifier
+      - name: cohort_month
+        description: Month when cohort was created
+      - name: months_since_cohort
+        description: Number of months since cohort creation
+      - name: retention_rate_pct
+        description: Percentage of original cohort still active
+      - name: progression_rate_pct
+        description: Percentage progressed to opportunity/won stage
+
+  - name: rep_activity_by_channel
+    description: Sales activity and effectiveness metrics by outreach channel
+    meta:
+      owner: Sales Management
+      criticality: medium
+    columns:
+      - name: rep_id
+        description: Sales rep identifier
+      - name: channel
+        description: Outreach channel (email, phone, social, etc.)
+      - name: total_outreach
+        description: Number of outreach activities
+      - name: response_rate_pct
+        description: Percentage of outreach that received response
+      - name: conversion_rate_pct
+        description: Percentage of outreach that converted
+
+  - name: ticket_sla_compliance
+    description: Support ticket SLA compliance and response time tracking
+    meta:
+      owner: Customer Success
+      criticality: high
+    columns:
+      - name: facility_id
+        description: Facility identifier
+      - name: priority
+        description: Ticket priority level
+      - name: total_tickets
+        description: Number of tickets created
+      - name: sla_compliant_tickets
+        description: Number of tickets meeting SLA
+      - name: sla_compliance_rate_pct
+        description: Percentage of tickets meeting SLA
+      - name: avg_first_response_hours
+        description: Average first response time in hours
+      - name: avg_resolution_hours
+        description: Average resolution time in hours
+
+  - name: satisfaction_rollups
+    description: Customer satisfaction (CSAT) and Net Promoter Score (NPS) aggregations
+    meta:
+      owner: Customer Success
+      criticality: high
+    columns:
+      - name: facility_id
+        description: Facility identifier
+      - name: metric_type
+        description: Type of survey (csat or nps)
+      - name: avg_score
+        description: Average satisfaction or NPS score
+      - name: promoter_or_satisfaction_pct
+        description: Percentage promoters (NPS) or satisfied (CSAT)
+      - name: detractor_rate_pct
+        description: Percentage detractors (NPS) or dissatisfied (CSAT)
+      - name: month_over_month_change
+        description: Month-over-month change in score
+
+  - name: health_scores
+    description: Comprehensive facility health scores combining multiple KPIs
+    meta:
+      owner: Executive Leadership
+      criticality: critical
+    columns:
+      - name: facility_id
+        description: Facility identifier
+      - name: overall_health_score
+        description: Composite health score (0-100)
+      - name: health_status
+        description: Health status (excellent, good, fair, poor)
+      - name: compliance_score
+        description: Compliance component score
+      - name: pipeline_health
+        description: Pipeline health component score
+      - name: conversion_health
+        description: Conversion health component score
+      - name: sla_health
+        description: SLA compliance component score
+      - name: satisfaction_health
+        description: Customer satisfaction component score

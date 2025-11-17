@@ -22,9 +22,88 @@ models:
     +schema: analytics
     kpis:
       +materialized: table
+      +tags: 
+        - kpi
+        - refresh_daily
+      weighted_pipeline_scenarios:
+        +materialized: table
+        +meta:
+          refresh_frequency: daily
+          refresh_sla_hours: 2
+      conversion_funnel:
+        +materialized: table
+        +meta:
+          refresh_frequency: daily
+          refresh_sla_hours: 2
+      cohort_retention:
+        +materialized: table
+        +meta:
+          refresh_frequency: daily
+          refresh_sla_hours: 4
+      rep_activity_by_channel:
+        +materialized: table
+        +meta:
+          refresh_frequency: daily
+          refresh_sla_hours: 3
+      ticket_sla_compliance:
+        +materialized: table
+        +meta:
+          refresh_frequency: daily
+          refresh_sla_hours: 1
+      satisfaction_rollups:
+        +materialized: table
+        +meta:
+          refresh_frequency: daily
+          refresh_sla_hours: 4
+      health_scores:
+        +materialized: table
+        +meta:
+          refresh_frequency: daily
+          refresh_sla_hours: 2
     intermediate:
       +materialized: view
 
 seeds:
   analytics:
     +schema: analytics_data
+    leads:
+      +column_types:
+        id: text
+        facility_id: text
+        rep_id: text
+        status: text
+        stage: text
+        created_at: timestamp
+        updated_at: timestamp
+        qualified_at: timestamp
+        closed_at: timestamp
+        amount: numeric
+        created_month: date
+    opportunities:
+      +column_types:
+        id: text
+        lead_id: text
+        rep_id: text
+        status: text
+        created_at: timestamp
+        updated_at: timestamp
+        closed_at: timestamp
+        amount: numeric
+    tickets:
+      +column_types:
+        id: text
+        facility_id: text
+        priority: text
+        status: text
+        created_at: timestamp
+        resolved_at: timestamp
+        first_response_at: timestamp
+        sla_met: boolean
+    satisfaction:
+      +column_types:
+        id: text
+        facility_id: text
+        survey_type: text
+        score: integer
+        created_at: timestamp
+        feedback: text
