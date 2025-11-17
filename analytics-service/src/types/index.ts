@@ -136,6 +136,15 @@ export interface AppConfig {
     url: string;
     timeout: number;
   };
+  kafka: {
+    brokers: string[];
+    ssl?: boolean;
+    sasl?: {
+      mechanism: string;
+      username?: string;
+      password?: string;
+    };
+  };
   governance: GovernanceConfig;
   port?: number;
   apiVersion?: string;
@@ -222,6 +231,8 @@ export interface ForecastScenario {
   createdAt: string;
   createdBy: string;
   isReport: boolean;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -284,6 +295,8 @@ export interface InsightsReport {
   };
   trends: TrendAnalysis;
   narrative: string;
+}
+
 export interface GovernanceConfig {
   auditLog: {
     enabled: boolean;
@@ -372,4 +385,198 @@ export interface SecurityContext {
   auditRequired: boolean;
   piiAccess: boolean;
   facilityScope?: string;
+}
+
+// Dashboard types
+export interface SavedView {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  dashboardType: DashboardType;
+  filters: DashboardFilters;
+  layout: DashboardLayout;
+  isPublic: boolean;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum DashboardType {
+  PIPELINE = 'pipeline',
+  REVENUE = 'revenue',
+  COMPLIANCE = 'compliance',
+  OUTREACH = 'outreach',
+  COMBINED = 'combined'
+}
+
+export interface DashboardFilters {
+  team?: string[];
+  rep?: string[];
+  startDate?: string;
+  endDate?: string;
+  pipeline?: string[];
+  facilityId?: string;
+  includePII?: boolean;
+  timeRange?: TimeRange;
+  customFilters?: Record<string, any>;
+}
+
+export interface TimeRange {
+  preset?: 'today' | 'yesterday' | 'last7days' | 'last30days' | 'last90days' | 'thismonth' | 'lastmonth' | 'thisyear' | 'custom';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface DashboardLayout {
+  widgets: Widget[];
+  grid: GridConfig;
+}
+
+export interface Widget {
+  id: string;
+  type: WidgetType;
+  title: string;
+  position: WidgetPosition;
+  config: WidgetConfig;
+  dataSource: string;
+  filters?: Partial<DashboardFilters>;
+}
+
+export enum WidgetType {
+  KPI_CARD = 'kpi_card',
+  CHART = 'chart',
+  TABLE = 'table',
+  GAUGE = 'gauge',
+  PROGRESS = 'progress'
+}
+
+export interface WidgetPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface WidgetConfig {
+  chartType?: 'line' | 'bar' | 'pie' | 'area' | 'scatter';
+  metric?: string;
+  aggregation?: 'sum' | 'avg' | 'count' | 'max' | 'min';
+  groupBy?: string;
+  colors?: string[];
+  showLegend?: boolean;
+  showDataLabels?: boolean;
+}
+
+export interface GridConfig {
+  columns: number;
+  rowHeight: number;
+  margin: [number, number];
+  containerPadding: [number, number];
+}
+
+export interface DashboardFilter {
+  id: string;
+  userId: string;
+  viewId?: string;
+  filterName: string;
+  filterConfig: Record<string, any>;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DrilldownConfig {
+  id: string;
+  userId: string;
+  viewId?: string;
+  metricName: string;
+  drilldownPath: DrilldownStep[];
+  targetTable: string;
+  filters: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DrilldownStep {
+  level: number;
+  dimension: string;
+  aggregation?: string;
+  filters?: Record<string, any>;
+}
+
+export interface ExportJob {
+  id: string;
+  userId: string;
+  queryConfig: Record<string, any>;
+  status: ExportStatus;
+  filePath?: string;
+  recordCount: number;
+  fileSize: number;
+  errorMessage?: string;
+  startedAt?: Date;
+  completedAt?: Date;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+export enum ExportStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
+}
+
+export interface DashboardQuery extends AnalyticsQuery {
+  viewId?: string;
+  dashboardType?: DashboardType;
+  team?: string[];
+  rep?: string[];
+  pipeline?: string[];
+  timeRange?: TimeRange;
+  includeDrilldowns?: boolean;
+  format?: 'json' | 'csv';
+  limit?: number;
+  offset?: number;
+}
+
+export interface DashboardResponse {
+  success: boolean;
+  data: any;
+  metadata: {
+    viewId?: string;
+    dashboardType: DashboardType;
+    filters: DashboardFilters;
+    timestamp: string;
+    recordCount?: number;
+    cached: boolean;
+    hasDrilldowns?: boolean;
+  };
+}
+
+export interface KafkaMessage {
+  topic: string;
+  key?: string;
+  value: any;
+  headers?: Record<string, string>;
+  timestamp?: number;
+}
+
+export interface CacheInvalidationMessage {
+  cacheKey: string;
+  reason: string;
+  triggeredBy: string;
+  timestamp: string;
+  affectedTables?: string[];
+}
+
+export interface ExportNotificationMessage {
+  jobId: string;
+  userId: string;
+  status: ExportStatus;
+  filePath?: string;
+  recordCount?: number;
+  errorMessage?: string;
+  timestamp: string;
 }
