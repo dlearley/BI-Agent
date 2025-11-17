@@ -1,0 +1,193 @@
+---
+# KPI Refresh Jobs Configuration
+# Defines refresh schedules and SLAs for CRM metrics materialized views
+
+version: "1.0"
+environment: production
+
+jobs:
+  - name: refresh_weighted_pipeline_scenarios
+    description: Refresh weighted pipeline scenarios with forecast calculations
+    model: weighted_pipeline_scenarios
+    schedule: "0 * * * *"  # Every hour
+    sla_hours: 2
+    criticality: high
+    retry_config:
+      max_attempts: 3
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+    notifications:
+      on_failure:
+        - channel: slack
+          recipients: ["#sales-alerts"]
+        - channel: email
+          recipients: ["sales-ops@company.com"]
+
+  - name: refresh_conversion_funnel
+    description: Refresh conversion funnel metrics
+    model: conversion_funnel
+    schedule: "15 * * * *"  # Every hour at :15
+    sla_hours: 2
+    criticality: high
+    retry_config:
+      max_attempts: 3
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+    notifications:
+      on_failure:
+        - channel: slack
+          recipients: ["#sales-alerts"]
+        - channel: email
+          recipients: ["sales-leadership@company.com"]
+
+  - name: refresh_cohort_retention
+    description: Refresh cohort retention and progression analysis
+    model: cohort_retention
+    schedule: "30 1 * * *"  # 1:30 AM daily
+    sla_hours: 4
+    criticality: medium
+    retry_config:
+      max_attempts: 2
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+
+  - name: refresh_rep_activity_by_channel
+    description: Refresh sales rep activity by channel metrics
+    model: rep_activity_by_channel
+    schedule: "0 2 * * *"  # 2:00 AM daily
+    sla_hours: 3
+    criticality: medium
+    retry_config:
+      max_attempts: 2
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+    notifications:
+      on_failure:
+        - channel: slack
+          recipients: ["#sales-ops"]
+
+  - name: refresh_ticket_sla_compliance
+    description: Refresh ticket SLA compliance metrics
+    model: ticket_sla_compliance
+    schedule: "*/15 * * * *"  # Every 15 minutes
+    sla_hours: 1
+    criticality: high
+    retry_config:
+      max_attempts: 5
+      backoff_multiplier: 1.2
+      backoff_seconds: 30
+    notifications:
+      on_failure:
+        - channel: slack
+          recipients: ["#customer-success-alerts"]
+        - channel: email
+          recipients: ["customer-success@company.com"]
+      on_sla_breach:
+        - channel: slack
+          recipients: ["@on-call-ops"]
+
+  - name: refresh_satisfaction_rollups
+    description: Refresh CSAT/NPS satisfaction metrics
+    model: satisfaction_rollups
+    schedule: "45 2 * * *"  # 2:45 AM daily
+    sla_hours: 4
+    criticality: high
+    retry_config:
+      max_attempts: 2
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+    notifications:
+      on_failure:
+        - channel: slack
+          recipients: ["#customer-success"]
+
+  - name: refresh_health_scores
+    description: Refresh comprehensive facility health scores
+    model: health_scores
+    schedule: "0 3 * * *"  # 3:00 AM daily
+    sla_hours: 2
+    criticality: critical
+    retry_config:
+      max_attempts: 4
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+    dependencies:
+      - refresh_weighted_pipeline_scenarios
+      - refresh_conversion_funnel
+      - refresh_ticket_sla_compliance
+      - refresh_satisfaction_rollups
+    notifications:
+      on_failure:
+        - channel: slack
+          recipients: ["#exec-alerts", "@on-call-analytics"]
+        - channel: email
+          recipients: ["leadership@company.com", "analytics-team@company.com"]
+        - channel: pagerduty
+          service_key: "pagerduty_service_key_health_scores"
+      on_sla_breach:
+        - channel: slack
+          recipients: ["@on-call-analytics"]
+      on_success:
+        - channel: slack
+          recipients: ["#analytics-monitoring"]
+
+# Snapshot refresh jobs
+snapshots:
+  - name: snapshot_pipeline_kpi_snapshot
+    description: Capture pipeline KPI historical data
+    snapshot: pipeline_kpi_snapshot
+    schedule: "0 4 * * *"  # 4:00 AM daily
+    retention_days: 365
+    retry_config:
+      max_attempts: 2
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+
+  - name: snapshot_conversion_funnel_snapshot
+    description: Capture conversion funnel historical data
+    snapshot: conversion_funnel_snapshot
+    schedule: "15 4 * * *"  # 4:15 AM daily
+    retention_days: 365
+    retry_config:
+      max_attempts: 2
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+
+  - name: snapshot_health_score_snapshot
+    description: Capture health score historical data
+    snapshot: health_score_snapshot
+    schedule: "30 4 * * *"  # 4:30 AM daily
+    retention_days: 365
+    retry_config:
+      max_attempts: 2
+      backoff_multiplier: 1.5
+      backoff_seconds: 60
+
+# Monitoring and alerting
+monitoring:
+  enabled: true
+  metrics_tracked:
+    - refresh_duration
+    - row_counts
+    - data_quality_checks
+    - sla_compliance
+
+  alerts:
+    - name: sla_breach
+      threshold: sla_hours
+      action: immediate_notification
+    - name: data_quality_failure
+      threshold: test_failures > 0
+      action: block_downstream_refresh
+    - name: refresh_duration_spike
+      threshold: current_duration > (avg_duration * 1.5)
+      action: notify_analytics_team
+
+# Datadog integration for monitoring
+datadog:
+  enabled: true
+  environment: production
+  tags:
+    - service:analytics
+    - team:data-engineering
+    - component:crm-metrics

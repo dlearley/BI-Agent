@@ -1,0 +1,11 @@
+id,facility_id,priority,status,created_at,resolved_at,first_response_at,sla_met
+tick_001,fac_001,critical,resolved,2024-01-05 08:00:00,2024-01-05 12:30:00,2024-01-05 08:45:00,true
+tick_002,fac_001,high,resolved,2024-01-06 09:15:00,2024-01-07 14:00:00,2024-01-06 11:30:00,true
+tick_003,fac_001,medium,resolved,2024-01-07 10:30:00,2024-01-09 16:45:00,2024-01-07 14:15:00,true
+tick_004,fac_001,low,open,2024-01-08 13:00:00,NULL,2024-01-08 15:45:00,NULL
+tick_005,fac_002,critical,resolved,2024-01-09 07:30:00,2024-01-09 11:00:00,2024-01-09 07:45:00,true
+tick_006,fac_002,high,resolved,2024-01-10 08:45:00,2024-01-11 16:20:00,2024-01-10 10:15:00,false
+tick_007,fac_002,medium,resolved,2024-01-11 11:00:00,2024-01-13 09:30:00,2024-01-11 13:45:00,true
+tick_008,fac_001,critical,resolved,2024-02-01 09:00:00,2024-02-01 12:15:00,2024-02-01 09:30:00,true
+tick_009,fac_002,high,resolved,2024-02-02 10:30:00,2024-02-03 14:45:00,2024-02-02 12:00:00,true
+tick_010,fac_001,medium,open,2024-02-03 11:15:00,NULL,2024-02-03 13:00:00,NULL

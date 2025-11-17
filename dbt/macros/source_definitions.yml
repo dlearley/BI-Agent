@@ -1,8 +1,3 @@
-{% macro source_definitions() %}
-{% raw %}
-{% endraw %}
-{% endmacro %}
-
 version: 2
 
 sources:
@@ -105,3 +100,97 @@ sources:
             description: Timestamp when facility was created
           - name: updated_at
             description: Timestamp when facility was last updated
+
+      - name: leads
+        description: CRM leads data for sales pipeline
+        columns:
+          - name: id
+            description: Primary key for leads
+            tests:
+              - unique
+              - not_null
+          - name: facility_id
+            description: Foreign key to facilities table
+          - name: rep_id
+            description: Sales representative assigned to lead
+          - name: status
+            description: Lead status in pipeline (new, qualified, contacted, etc.)
+          - name: stage
+            description: Pipeline stage (lead, sql, opportunity, won, lost)
+          - name: created_at
+            description: Timestamp when lead was created
+          - name: updated_at
+            description: Timestamp when lead was last updated
+          - name: qualified_at
+            description: Timestamp when lead was qualified
+          - name: closed_at
+            description: Timestamp when lead was closed
+          - name: amount
+            description: Deal value
+          - name: created_month
+            description: Cohort month for retention analysis
+
+      - name: opportunities
+        description: CRM opportunities from qualified leads
+        columns:
+          - name: id
+            description: Primary key for opportunities
+            tests:
+              - unique
+              - not_null
+          - name: lead_id
+            description: Foreign key to leads table
+          - name: rep_id
+            description: Sales representative assigned
+          - name: status
+            description: Opportunity status
+          - name: created_at
+            description: Timestamp when opportunity was created
+          - name: updated_at
+            description: Timestamp when opportunity was last updated
+          - name: closed_at
+            description: Timestamp when opportunity was closed
+          - name: amount
+            description: Opportunity value
+
+      - name: tickets
+        description: Support tickets for SLA tracking
+        columns:
+          - name: id
+            description: Primary key for tickets
+            tests:
+              - unique
+              - not_null
+          - name: facility_id
+            description: Foreign key to facilities table
+          - name: priority
+            description: Ticket priority (low, medium, high, critical)
+          - name: status
+            description: Ticket status
+          - name: created_at
+            description: Timestamp when ticket was created
+          - name: resolved_at
+            description: Timestamp when ticket was resolved
+          - name: first_response_at
+            description: Timestamp of first response
+          - name: sla_met
+            description: Boolean flag if ticket met SLA
+
+      - name: satisfaction
+        description: Customer satisfaction and NPS survey data
+        columns:
+          - name: id
+            description: Primary key for satisfaction records
+            tests:
+              - unique
+              - not_null
+          - name: facility_id
+            description: Foreign key to facilities table
+          - name: survey_type
+            description: Survey type (csat, nps)
+          - name: score
+            description: Survey score
+          - name: created_at
+            description: Timestamp when survey was submitted
+          - name: feedback
+            description: Optional feedback text
