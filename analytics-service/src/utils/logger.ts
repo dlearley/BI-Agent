@@ -17,13 +17,15 @@ const traceFormat = printf((info) => {
   if (correlationId) {
     info.correlationId = correlationId;
   }
-  return info;
+  return `${info.timestamp} ${info.level} ${info.message}`;
 });
 
 // Console format for development
 const consoleFormat = printf(({ level, message, timestamp, traceId, correlationId, ...metadata }) => {
-  const traceInfo = traceId ? `[trace:${traceId.substring(0, 8)}]` : '';
-  const correlationInfo = correlationId ? `[corr:${correlationId.substring(0, 8)}]` : '';
+  const traceStr = typeof traceId === 'string' ? traceId : '';
+  const correlationStr = typeof correlationId === 'string' ? correlationId : '';
+  const traceInfo = traceStr ? `[trace:${traceStr.substring(0, 8)}]` : '';
+  const correlationInfo = correlationStr ? `[corr:${correlationStr.substring(0, 8)}]` : '';
   const metaStr = Object.keys(metadata).length ? JSON.stringify(metadata) : '';
   return `${timestamp} ${level} ${traceInfo}${correlationInfo} ${message} ${metaStr}`;
 });

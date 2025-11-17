@@ -44,7 +44,7 @@ const sdk = new NodeSDK({
   metricReader: new PeriodicExportingMetricReader({
     exporter: metricExporter,
     exportIntervalMillis: 10000, // Export metrics every 10 seconds
-  }),
+  }) as any,
   instrumentations: [
     getNodeAutoInstrumentations({
       // Enable specific instrumentations
@@ -54,7 +54,8 @@ const sdk = new NodeSDK({
     }),
     new HttpInstrumentation({
       requestHook: (span, request) => {
-        span.setAttribute('http.request_id', request.headers['x-request-id'] || 'unknown');
+        const req = request as any;
+        span.setAttribute('http.request_id', req.headers?.['x-request-id'] || 'unknown');
       },
     }),
     new ExpressInstrumentation({
