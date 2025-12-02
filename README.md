@@ -134,7 +134,7 @@ Authorization: Bearer <your-jwt-token>
 #### Analytics KPIs
 
 - `GET /api/v1/analytics/pipeline` - Pipeline metrics
-- `GET /api/v1/analytics/compliance` - Compliance metrics  
+- `GET /api/v1/analytics/compliance` - Compliance metrics
 - `GET /api/v1/analytics/revenue` - Revenue metrics
 - `GET /api/v1/analytics/outreach` - Outreach metrics
 - `GET /api/v1/analytics/kpis` - Combined KPIs
@@ -316,6 +316,7 @@ This repository was created by migrating the analytics stack from the NurseHR re
 - HIPAA compliance features
 
 The original development was tracked in the NurseHR repository under:
+
 - Branch: `feature/analytics-backend-views-api-rbac-hipaa-refresh-dbt-redis`
 - Task: `analytics-backend-views-api`
 
@@ -326,6 +327,7 @@ The original development was tracked in the NurseHR repository under:
 ## Support
 
 For support and questions:
+
 - Create an issue in the repository
 - Check the documentation
 - Review the test cases for usage examples

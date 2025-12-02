@@ -83,9 +83,7 @@ describe('Governance Security Tests', () => {
       });
 
       it('should deny access without authentication', async () => {
-        await request(app)
-          .get('/api/v1/analytics/pipeline')
-          .expect(401);
+        await request(app).get('/api/v1/analytics/pipeline').expect(401);
       });
 
       it('should deny access with invalid token', async () => {
@@ -218,7 +216,9 @@ describe('Governance Security Tests', () => {
 
       expect(auditResponse.body.data).toBeDefined();
       const logs = auditResponse.body.data;
-      const accessLog = logs.find((log: any) => log.action === 'view_audit_logs' || log.resource === 'analytics');
+      const accessLog = logs.find(
+        (log: any) => log.action === 'view_audit_logs' || log.resource === 'analytics'
+      );
       expect(accessLog).toBeDefined();
     });
 
@@ -324,7 +324,9 @@ describe('Governance Security Tests', () => {
       startDate.setDate(startDate.getDate() - 30);
 
       const response = await request(app)
-        .get(`/api/v1/governance/reports/hipaa?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
+        .get(
+          `/api/v1/governance/reports/hipaa?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+        )
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
@@ -347,13 +349,13 @@ describe('Governance Security Tests', () => {
       const originalData = {
         email: 'test@example.com',
         phone: '555-123-4567',
-        name: 'John Doe'
+        name: 'John Doe',
       };
 
       const maskedData = {
         email: '***@***.***',
         phone: '***-***-****',
-        name: '[REDACTED]'
+        name: '[REDACTED]',
       };
 
       const response = await request(app)
@@ -362,7 +364,7 @@ describe('Governance Security Tests', () => {
         .send({
           originalData,
           maskedData,
-          framework: 'hipaa'
+          framework: 'hipaa',
         })
         .expect(200);
 
@@ -375,7 +377,7 @@ describe('Governance Security Tests', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           resourceType: 'analytics',
-          framework: 'hipaa'
+          framework: 'hipaa',
         })
         .expect(200);
 

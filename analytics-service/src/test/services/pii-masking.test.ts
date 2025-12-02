@@ -71,10 +71,10 @@ describe('PII Masking Service Tests', () => {
     });
 
     it('should fully mask names', () => {
-      const testData = { 
-        firstName: 'John', 
-        lastName: 'Doe', 
-        fullName: 'John Doe' 
+      const testData = {
+        firstName: 'John',
+        lastName: 'Doe',
+        fullName: 'John Doe',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -91,11 +91,11 @@ describe('PII Masking Service Tests', () => {
     });
 
     it('should not mask non-PII fields', () => {
-      const testData = { 
+      const testData = {
         email: 'user@example.com',
         department: 'Engineering',
         salary: 75000,
-        startDate: '2020-01-01'
+        startDate: '2020-01-01',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -133,10 +133,10 @@ describe('PII Masking Service Tests', () => {
     });
 
     it('should partially mask names', () => {
-      const testData = { 
-        firstName: 'John', 
+      const testData = {
+        firstName: 'John',
         lastName: 'Doe',
-        fullName: 'John Doe' 
+        fullName: 'John Doe',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -159,9 +159,9 @@ describe('PII Masking Service Tests', () => {
     });
 
     it('should hash PII fields with consistent prefixes', () => {
-      const testData = { 
+      const testData = {
         email: 'user@example.com',
-        phone: '555-123-4567' 
+        phone: '555-123-4567',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -190,10 +190,10 @@ describe('PII Masking Service Tests', () => {
   describe('PII Access Permissions', () => {
     it('should not mask data for users with PII access', () => {
       mockSecurityContext.piiAccess = true;
-      const testData = { 
+      const testData = {
         email: 'user@example.com',
         phone: '555-123-4567',
-        name: 'John Doe'
+        name: 'John Doe',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -204,9 +204,9 @@ describe('PII Masking Service Tests', () => {
 
     it('should mask data when PII masking is disabled in preset', () => {
       mockSecurityContext.preset.piiMasking.enabled = false;
-      const testData = { 
+      const testData = {
         email: 'user@example.com',
-        phone: '555-123-4567'
+        phone: '555-123-4567',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -220,7 +220,7 @@ describe('PII Masking Service Tests', () => {
       const testData = [
         { email: 'user1@example.com', name: 'John Doe' },
         { email: 'user2@example.com', name: 'Jane Smith' },
-        { department: 'Engineering' } // Non-PII item
+        { department: 'Engineering' }, // Non-PII item
       ];
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -236,14 +236,14 @@ describe('PII Masking Service Tests', () => {
         user: {
           contact: {
             email: 'user@example.com',
-            phone: '555-123-4567'
+            phone: '555-123-4567',
           },
           personal: {
             name: 'John Doe',
-            ssn: '123-45-6789'
-          }
+            ssn: '123-45-6789',
+          },
         },
-        department: 'Engineering'
+        department: 'Engineering',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -262,8 +262,8 @@ describe('PII Masking Service Tests', () => {
         metadata: null,
         user: {
           email: 'admin@example.com',
-          roles: ['admin', 'user']
-        }
+          roles: ['admin', 'user'],
+        },
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -282,18 +282,18 @@ describe('PII Masking Service Tests', () => {
   describe('Query Results Masking', () => {
     it('should mask query results', () => {
       const queryResults = [
-        { 
-          id: 1, 
-          email: 'user1@example.com', 
+        {
+          id: 1,
+          email: 'user1@example.com',
           name: 'John Doe',
-          department: 'Engineering'
+          department: 'Engineering',
         },
-        { 
-          id: 2, 
-          email: 'user2@example.com', 
+        {
+          id: 2,
+          email: 'user2@example.com',
           name: 'Jane Smith',
-          department: 'Sales'
-        }
+          department: 'Sales',
+        },
       ];
       const result = piiMaskingService.maskQueryResults(queryResults, mockSecurityContext);
 
@@ -310,7 +310,7 @@ describe('PII Masking Service Tests', () => {
     it('should generate masked column SQL for full masking', () => {
       const columns = ['id', 'email', 'name', 'department'];
       mockSecurityContext.preset.piiMasking.maskingStrategy = 'full';
-      
+
       const result = piiMaskingService.generateMaskedColumnsSQL(columns, mockSecurityContext);
 
       expect(result).toContain('id');
@@ -322,7 +322,7 @@ describe('PII Masking Service Tests', () => {
     it('should generate masked column SQL for partial masking', () => {
       const columns = ['id', 'email', 'phone', 'department'];
       mockSecurityContext.preset.piiMasking.maskingStrategy = 'partial';
-      
+
       const result = piiMaskingService.generateMaskedColumnsSQL(columns, mockSecurityContext);
 
       expect(result).toContain('id');
@@ -334,7 +334,7 @@ describe('PII Masking Service Tests', () => {
     it('should generate masked column SQL for hash masking', () => {
       const columns = ['id', 'email', 'name', 'department'];
       mockSecurityContext.preset.piiMasking.maskingStrategy = 'hash';
-      
+
       const result = piiMaskingService.generateMaskedColumnsSQL(columns, mockSecurityContext);
 
       expect(result).toContain('id');
@@ -345,7 +345,7 @@ describe('PII Masking Service Tests', () => {
     it('should not mask columns when PII access is granted', () => {
       const columns = ['id', 'email', 'name', 'department'];
       mockSecurityContext.piiAccess = true;
-      
+
       const result = piiMaskingService.generateMaskedColumnsSQL(columns, mockSecurityContext);
 
       expect(result).toEqual(columns);
@@ -354,7 +354,7 @@ describe('PII Masking Service Tests', () => {
     it('should not mask columns when masking is disabled', () => {
       const columns = ['id', 'email', 'name', 'department'];
       mockSecurityContext.preset.piiMasking.enabled = false;
-      
+
       const result = piiMaskingService.generateMaskedColumnsSQL(columns, mockSecurityContext);
 
       expect(result).toEqual(columns);
@@ -365,9 +365,13 @@ describe('PII Masking Service Tests', () => {
     it('should validate full masking effectiveness', () => {
       const originalData = { email: 'user@example.com', name: 'John Doe' };
       const maskedData = { email: '***@***.***', name: '[REDACTED]' };
-      
-      const isValid = piiMaskingService.validatePIIMasking(originalData, maskedData, mockSecurityContext);
-      
+
+      const isValid = piiMaskingService.validatePIIMasking(
+        originalData,
+        maskedData,
+        mockSecurityContext
+      );
+
       expect(isValid).toBe(true);
     });
 
@@ -375,9 +379,13 @@ describe('PII Masking Service Tests', () => {
       mockSecurityContext.preset.piiMasking.maskingStrategy = 'partial';
       const originalData = { email: 'user@example.com', name: 'John Doe' };
       const maskedData = { email: 'us***m@example.com', name: 'J***e' };
-      
-      const isValid = piiMaskingService.validatePIIMasking(originalData, maskedData, mockSecurityContext);
-      
+
+      const isValid = piiMaskingService.validatePIIMasking(
+        originalData,
+        maskedData,
+        mockSecurityContext
+      );
+
       expect(isValid).toBe(true);
     });
 
@@ -385,18 +393,26 @@ describe('PII Masking Service Tests', () => {
       mockSecurityContext.preset.piiMasking.maskingStrategy = 'hash';
       const originalData = { email: 'user@example.com' };
       const maskedData = { email: 'ema_12345678' };
-      
-      const isValid = piiMaskingService.validatePIIMasking(originalData, maskedData, mockSecurityContext);
-      
+
+      const isValid = piiMaskingService.validatePIIMasking(
+        originalData,
+        maskedData,
+        mockSecurityContext
+      );
+
       expect(isValid).toBe(true);
     });
 
     it('should detect ineffective masking', () => {
       const originalData = { email: 'user@example.com' };
       const maskedData = { email: 'user@example.com' }; // Not masked
-      
-      const isValid = piiMaskingService.validatePIIMasking(originalData, maskedData, mockSecurityContext);
-      
+
+      const isValid = piiMaskingService.validatePIIMasking(
+        originalData,
+        maskedData,
+        mockSecurityContext
+      );
+
       expect(isValid).toBe(false);
     });
 
@@ -404,9 +420,13 @@ describe('PII Masking Service Tests', () => {
       mockSecurityContext.piiAccess = true;
       const originalData = { email: 'user@example.com' };
       const maskedData = { email: 'user@example.com' };
-      
-      const isValid = piiMaskingService.validatePIIMasking(originalData, maskedData, mockSecurityContext);
-      
+
+      const isValid = piiMaskingService.validatePIIMasking(
+        originalData,
+        maskedData,
+        mockSecurityContext
+      );
+
       expect(isValid).toBe(true);
     });
 
@@ -414,9 +434,13 @@ describe('PII Masking Service Tests', () => {
       mockSecurityContext.preset.piiMasking.enabled = false;
       const originalData = { email: 'user@example.com' };
       const maskedData = { email: 'user@example.com' };
-      
-      const isValid = piiMaskingService.validatePIIMasking(originalData, maskedData, mockSecurityContext);
-      
+
+      const isValid = piiMaskingService.validatePIIMasking(
+        originalData,
+        maskedData,
+        mockSecurityContext
+      );
+
       expect(isValid).toBe(true);
     });
   });
@@ -426,7 +450,7 @@ describe('PII Masking Service Tests', () => {
       const testData = {
         email: null,
         phone: undefined,
-        name: 'John Doe'
+        name: 'John Doe',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -438,7 +462,7 @@ describe('PII Masking Service Tests', () => {
     it('should handle empty strings', () => {
       const testData = {
         email: '',
-        name: 'John Doe'
+        name: 'John Doe',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -449,7 +473,7 @@ describe('PII Masking Service Tests', () => {
     it('should handle non-string values in PII fields', () => {
       const testData = {
         email: 12345, // Number instead of string
-        name: ['John', 'Doe'] // Array instead of string
+        name: ['John', 'Doe'], // Array instead of string
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 
@@ -461,7 +485,7 @@ describe('PII Masking Service Tests', () => {
       const testData = {
         users: [],
         metadata: {},
-        email: 'user@example.com'
+        email: 'user@example.com',
       };
       const result = piiMaskingService.maskData(testData, mockSecurityContext);
 

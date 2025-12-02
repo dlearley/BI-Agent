@@ -9,7 +9,7 @@ export interface User {
 export enum UserRole {
   ADMIN = 'admin',
   RECRUITER = 'recruiter',
-  VIEWER = 'viewer'
+  VIEWER = 'viewer',
 }
 
 export enum Permission {
@@ -20,7 +20,7 @@ export enum Permission {
   VIEW_AUDIT_LOGS = 'view_audit_logs',
   MANAGE_GOVERNANCE = 'manage_governance',
   EXPORT_DATA = 'export_data',
-  VIEW_VERSIONED_METRICS = 'view_versioned_metrics'
+  VIEW_VERSIONED_METRICS = 'view_versioned_metrics',
 }
 
 export interface AnalyticsKPI {
@@ -146,7 +146,7 @@ export interface AppConfig {
 export enum ForecastModel {
   PROPHET = 'prophet',
   ARIMA = 'arima',
-  XGBOOST = 'xgboost'
+  XGBOOST = 'xgboost',
 }
 
 export enum ForecastMetric {
@@ -154,7 +154,7 @@ export enum ForecastMetric {
   PIPELINE_COUNT = 'pipeline_count',
   TIME_TO_FILL = 'time_to_fill',
   COMPLIANCE_RATE = 'compliance_rate',
-  OUTREACH_RESPONSE_RATE = 'outreach_response_rate'
+  OUTREACH_RESPONSE_RATE = 'outreach_response_rate',
 }
 
 export interface ForecastRequest {
@@ -222,6 +222,8 @@ export interface ForecastScenario {
   createdAt: string;
   createdBy: string;
   isReport: boolean;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -284,6 +286,8 @@ export interface InsightsReport {
   };
   trends: TrendAnalysis;
   narrative: string;
+}
+
 export interface GovernanceConfig {
   auditLog: {
     enabled: boolean;

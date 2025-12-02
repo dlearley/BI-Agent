@@ -1,17 +1,17 @@
 import { db } from '../config/database';
 import { redis } from '../config/redis';
-import { 
-  AnalyticsKPI, 
-  AnalyticsQuery, 
-  ComplianceMetrics, 
-  RevenueMetrics, 
+import {
+  AnalyticsKPI,
+  AnalyticsQuery,
+  ComplianceMetrics,
+  RevenueMetrics,
   OutreachMetrics,
   User,
   FacilityRevenue,
   MonthlyRevenue,
   ChannelMetrics,
   ComplianceViolation,
-  SecurityContext
+  SecurityContext,
 } from '../types';
 import config from '../config';
 import { applyHIPAARedaction, enforceMinimumThreshold } from '../middleware/hipaa';
@@ -24,12 +24,15 @@ export class AnalyticsService {
   private readonly cachePrefix = 'analytics:';
   private readonly defaultCacheTTL = config.analytics.cacheTTL;
 
-  private async createSecurityContext(user: User, framework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa'): Promise<SecurityContext> {
+  private async createSecurityContext(
+    user: User,
+    framework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa'
+  ): Promise<SecurityContext> {
     return await governanceService.applyCompliancePreset(framework, user);
   }
 
   private async applyGovernanceFilters(
-    data: any[], 
+    data: any[],
     securityContext: SecurityContext,
     restrictedColumns?: string[]
   ): Promise<any[]> {
@@ -41,9 +44,7 @@ export class AnalyticsService {
     }
 
     // Apply PII masking
-    filteredData = filteredData.map(item => 
-      piiMaskingService.maskData(item, securityContext)
-    );
+    filteredData = filteredData.map(item => piiMaskingService.maskData(item, securityContext));
 
     // Apply HIPAA minimum threshold enforcement
     filteredData = filteredData.map(item => enforceMinimumThreshold(item));
@@ -51,10 +52,14 @@ export class AnalyticsService {
     return filteredData;
   }
 
-  async getPipelineKPIs(query: AnalyticsQuery, user: User, complianceFramework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa'): Promise<any> {
+  async getPipelineKPIs(
+    query: AnalyticsQuery,
+    user: User,
+    complianceFramework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa'
+  ): Promise<any> {
     const securityContext = await this.createSecurityContext(user, complianceFramework);
     const cacheKey = this.generateCacheKey('pipeline', query, user, complianceFramework);
-    
+
     // Try to get from cache first
     const cached = await redis.get(cacheKey);
     if (cached) {
@@ -99,15 +104,15 @@ export class AnalyticsService {
     // Apply row-level security to SQL
     const secureSQL = applyRowLevelSecurity(sql, rowFilter);
     const results = await db.query(secureSQL, params);
-    
+
     // Apply governance filters
-    const restrictedColumns = config.governance.columnLevelSecurity.enabled 
-      ? config.governance.columnLevelSecurity.restrictedColumns 
+    const restrictedColumns = config.governance.columnLevelSecurity.enabled
+      ? config.governance.columnLevelSecurity.restrictedColumns
       : [];
-    
+
     const processedResults = await this.applyGovernanceFilters(
-      results, 
-      securityContext, 
+      results,
+      securityContext,
       restrictedColumns
     );
 
@@ -131,7 +136,7 @@ export class AnalyticsService {
 
   async getComplianceMetrics(query: AnalyticsQuery, user: User): Promise<ComplianceMetrics[]> {
     const cacheKey = this.generateCacheKey('compliance', query, user);
-    
+
     const cached = await redis.get(cacheKey);
     if (cached) {
       return cached;
@@ -172,22 +177,21 @@ export class AnalyticsService {
     sql += ` GROUP BY facility_id`;
 
     const results = await db.query(sql, params);
-    
-    const complianceMetricsPromises = results.map(async (row) => ({
+
+    const complianceMetricsPromises = results.map(async row => ({
       totalApplications: parseInt(row.total_applications),
       compliantApplications: parseInt(row.compliant_applications),
-      complianceRate: row.total_applications > 0 
-        ? (row.compliant_applications / row.total_applications) * 100 
-        : 0,
-      violations: await this.getComplianceViolations(row.facility_id, user)
+      complianceRate:
+        row.total_applications > 0
+          ? (row.compliant_applications / row.total_applications) * 100
+          : 0,
+      violations: await this.getComplianceViolations(row.facility_id, user),
     }));
-    
+
     const complianceMetrics: ComplianceMetrics[] = await Promise.all(complianceMetricsPromises);
 
-    const processedResults = complianceMetrics.map(metrics => 
-      applyHIPAARedaction(metrics, user)
-    );
-    
+    const processedResults = complianceMetrics.map(metrics => applyHIPAARedaction(metrics, user));
+
     const finalResults = enforceMinimumThreshold(processedResults);
 
     await redis.set(cacheKey, finalResults, this.defaultCacheTTL);
@@ -197,7 +201,7 @@ export class AnalyticsService {
 
   async getRevenueMetrics(query: AnalyticsQuery, user: User): Promise<RevenueMetrics> {
     const cacheKey = this.generateCacheKey('revenue', query, user);
-    
+
     const cached = await redis.get(cacheKey);
     if (cached) {
       return cached;
@@ -243,7 +247,7 @@ export class AnalyticsService {
     const revenueByFacility: FacilityRevenue[] = results.map(row => ({
       facilityId: row.facility_id,
       facilityName: `Facility ${row.facility_id}`, // In real app, fetch from facilities table
-      revenue: parseFloat(row.total_revenue)
+      revenue: parseFloat(row.total_revenue),
     }));
 
     const revenueByMonth: MonthlyRevenue[] = await this.getRevenueByMonth(query, user);
@@ -252,7 +256,7 @@ export class AnalyticsService {
       totalRevenue,
       averageRevenuePerPlacement: avgRevenuePerPlacement,
       revenueByFacility,
-      revenueByMonth
+      revenueByMonth,
     };
 
     const processedResult = applyHIPAARedaction(revenueMetrics, user);
@@ -265,7 +269,7 @@ export class AnalyticsService {
 
   async getOutreachMetrics(query: AnalyticsQuery, user: User): Promise<OutreachMetrics> {
     const cacheKey = this.generateCacheKey('outreach', query, user);
-    
+
     const cached = await redis.get(cacheKey);
     if (cached) {
       return cached;
@@ -312,7 +316,7 @@ export class AnalyticsService {
       totalOutreach,
       responseRate: totalOutreach > 0 ? (responses / totalOutreach) * 100 : 0,
       conversionRate: totalOutreach > 0 ? (conversions / totalOutreach) * 100 : 0,
-      effectiveChannels
+      effectiveChannels,
     };
 
     const processedResult = applyHIPAARedaction(outreachMetrics, user);
@@ -325,7 +329,7 @@ export class AnalyticsService {
 
   async getCombinedKPIs(query: AnalyticsQuery, user: User): Promise<AnalyticsKPI[]> {
     const cacheKey = this.generateCacheKey('combined', query, user);
-    
+
     const cached = await redis.get(cacheKey);
     if (cached) {
       return cached;
@@ -380,23 +384,24 @@ export class AnalyticsService {
       complianceStatus: {
         totalApplications: parseInt(row.total_applications),
         compliantApplications: parseInt(row.compliant_applications),
-        complianceRate: row.total_applications > 0 
-          ? (row.compliant_applications / row.total_applications) * 100 
-          : 0,
-        violations: [] // Would be populated separately
+        complianceRate:
+          row.total_applications > 0
+            ? (row.compliant_applications / row.total_applications) * 100
+            : 0,
+        violations: [], // Would be populated separately
       },
       revenue: {
         totalRevenue: parseFloat(row.total_revenue),
         averageRevenuePerPlacement: parseFloat(row.avg_revenue_per_invoice) || 0,
         revenueByFacility: [],
-        revenueByMonth: []
+        revenueByMonth: [],
       },
       outreachEffectiveness: {
         totalOutreach: parseInt(row.total_outreach),
         responseRate: parseFloat(row.avg_response_rate) || 0,
         conversionRate: parseFloat(row.avg_conversion_rate) || 0,
-        effectiveChannels: []
-      }
+        effectiveChannels: [],
+      },
     }));
 
     const processedResults = kpis.map(kpi => applyHIPAARedaction(kpi, user));
@@ -442,20 +447,23 @@ export class AnalyticsService {
     return results;
   }
 
-  private async getComplianceViolations(_facilityId: string, _user: User): Promise<ComplianceViolation[]> {
+  private async getComplianceViolations(
+    _facilityId: string,
+    _user: User
+  ): Promise<ComplianceViolation[]> {
     // In a real implementation, this would query a violations table
     // For now, return mock data
     return [
       {
         type: 'documentation_missing',
         count: 3,
-        severity: 'medium' as const
+        severity: 'medium' as const,
       },
       {
         type: 'timeline_exceeded',
         count: 1,
-        severity: 'low' as const
-      }
+        severity: 'low' as const,
+      },
     ];
   }
 
@@ -494,7 +502,7 @@ export class AnalyticsService {
     const results = await db.query(sql, params);
     return results.map(row => ({
       month: row.month.toISOString().split('T')[0],
-      revenue: parseFloat(row.revenue)
+      revenue: parseFloat(row.revenue),
     }));
   }
 
@@ -537,7 +545,7 @@ export class AnalyticsService {
       channel: row.channel,
       outreach: parseInt(row.total_outreach),
       responses: parseInt(row.responses),
-      conversions: parseInt(row.conversions)
+      conversions: parseInt(row.conversions),
     }));
   }
 
@@ -560,12 +568,17 @@ export class AnalyticsService {
     return '';
   }
 
-  private generateCacheKey(type: string, query: AnalyticsQuery, user: User, framework?: string): string {
+  private generateCacheKey(
+    type: string,
+    query: AnalyticsQuery,
+    user: User,
+    framework?: string
+  ): string {
     const queryString = JSON.stringify({
       ...query,
       userRole: user.role,
       facilityId: user.facilityId,
-      framework
+      framework,
     });
     return `${this.cachePrefix}${type}:${Buffer.from(queryString).toString('base64')}`;
   }

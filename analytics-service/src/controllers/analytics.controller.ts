@@ -19,7 +19,7 @@ export class AnalyticsController {
       const user = req.user!;
 
       const kpis = await analyticsService.getPipelineKPIs(query, user);
-      
+
       res.json({
         success: true,
         data: kpis,
@@ -42,7 +42,7 @@ export class AnalyticsController {
       const user = req.user!;
 
       const metrics = await analyticsService.getComplianceMetrics(query, user);
-      
+
       res.json({
         success: true,
         data: metrics,
@@ -65,7 +65,7 @@ export class AnalyticsController {
       const user = req.user!;
 
       const metrics = await analyticsService.getRevenueMetrics(query, user);
-      
+
       res.json({
         success: true,
         data: metrics,
@@ -88,7 +88,7 @@ export class AnalyticsController {
       const user = req.user!;
 
       const metrics = await analyticsService.getOutreachMetrics(query, user);
-      
+
       res.json({
         success: true,
         data: metrics,
@@ -111,7 +111,7 @@ export class AnalyticsController {
       const user = req.user!;
 
       const kpis = await analyticsService.getCombinedKPIs(query, user);
-      
+
       res.json({
         success: true,
         data: kpis,
@@ -144,7 +144,7 @@ export class AnalyticsController {
 
       // Enqueue refresh job
       const job = await queueService.enqueueRefreshJob(viewName);
-      
+
       res.json({
         success: true,
         message: 'Analytics refresh job enqueued successfully',
@@ -179,7 +179,7 @@ export class AnalyticsController {
       }
 
       const jobStatus = await queueService.getJobStatus(jobId);
-      
+
       res.json({
         success: true,
         data: jobStatus,
@@ -208,7 +208,7 @@ export class AnalyticsController {
       }
 
       const stats = await queueService.getQueueStats();
-      
+
       res.json({
         success: true,
         data: stats,
@@ -228,7 +228,7 @@ export class AnalyticsController {
       const user = req.user!;
 
       const refreshTimes = await analyticsService.getLastRefreshTimes();
-      
+
       res.json({
         success: true,
         data: refreshTimes,
@@ -255,9 +255,7 @@ export class AnalyticsController {
       ]);
 
       const lastRefresh = await analyticsService.getLastRefreshTimes();
-      const queueStats = user.role === 'admin' 
-        ? await queueService.getQueueStats() 
-        : null;
+      const queueStats = user.role === 'admin' ? await queueService.getQueueStats() : null;
 
       res.json({
         success: true,

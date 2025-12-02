@@ -1,8 +1,3 @@
-{% macro source_definitions() %}
-{% raw %}
-{% endraw %}
-{% endmacro %}
-
 version: 2
 
 sources:
@@ -11,7 +6,7 @@ sources:
     schema: public
     tables:
       - name: applications
-        description: Raw application data from the main application database
+        description: Raw application data from main application database
         columns:
           - name: id
             description: Primary key for applications
@@ -23,7 +18,7 @@ sources:
           - name: candidate_id
             description: Foreign key to candidates table
           - name: status
-            description: Current status of the application
+            description: Current status of application
           - name: created_at
             description: Timestamp when application was created
           - name: updated_at
@@ -36,7 +31,7 @@ sources:
             description: Boolean flag indicating compliance violations
 
       - name: invoices
-        description: Raw invoice data from the billing system
+        description: Raw invoice data from billing system
         columns:
           - name: id
             description: Primary key for invoices
@@ -59,7 +54,7 @@ sources:
             description: Timestamp when invoice was paid
 
       - name: outreach
-        description: Raw outreach data from the recruitment system
+        description: Raw outreach data from recruitment system
         columns:
           - name: id
             description: Primary key for outreach records

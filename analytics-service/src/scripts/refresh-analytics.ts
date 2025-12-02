@@ -5,9 +5,9 @@ import config from '../config';
 async function refreshAnalytics(): Promise<void> {
   try {
     console.log('🔄 Starting analytics refresh...');
-    
+
     const viewName = process.argv[2]; // Optional: specific view to refresh
-    
+
     if (viewName) {
       console.log(`📊 Refreshing specific view: ${viewName}`);
       await analyticsService.refreshMaterializedViews(viewName);
@@ -15,14 +15,14 @@ async function refreshAnalytics(): Promise<void> {
       console.log('📊 Refreshing all analytics views...');
       await analyticsService.refreshMaterializedViews();
     }
-    
+
     // Get last refresh times
     const refreshTimes = await analyticsService.getLastRefreshTimes();
     console.log('\n📅 Last refresh times:');
     refreshTimes.forEach((refresh: any) => {
       console.log(`  ${refresh.view_name}: ${refresh.last_updated}`);
     });
-    
+
     // Get queue stats
     const queueStats = await queueService.getQueueStats();
     console.log('\n📋 Queue statistics:');
@@ -30,9 +30,8 @@ async function refreshAnalytics(): Promise<void> {
     console.log(`  Active: ${queueStats.active}`);
     console.log(`  Completed: ${queueStats.completed}`);
     console.log(`  Failed: ${queueStats.failed}`);
-    
+
     console.log('\n✅ Analytics refresh completed successfully');
-    
   } catch (error) {
     console.error('❌ Analytics refresh failed:', error);
     process.exit(1);
@@ -42,18 +41,17 @@ async function refreshAnalytics(): Promise<void> {
 async function scheduleRefresh(): Promise<void> {
   try {
     console.log('⏰ Scheduling analytics refresh...');
-    
+
     const viewName = process.argv[2]; // Optional: specific view to refresh
     const delay = parseInt(process.argv[3] || '0'); // Optional: delay in milliseconds
-    
+
     const job = await queueService.enqueueRefreshJob(viewName, delay);
-    
+
     console.log(`✅ Refresh job enqueued successfully`);
     console.log(`  Job ID: ${job.id}`);
     console.log(`  View: ${viewName || 'all'}`);
     console.log(`  Delay: ${delay}ms`);
     console.log(`  Estimated execution: ${new Date(Date.now() + delay).toISOString()}`);
-    
   } catch (error) {
     console.error('❌ Failed to schedule refresh:', error);
     process.exit(1);
@@ -87,7 +85,7 @@ async function showHelp(): Promise<void> {
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  
+
   switch (command) {
     case 'refresh':
       await refreshAnalytics();

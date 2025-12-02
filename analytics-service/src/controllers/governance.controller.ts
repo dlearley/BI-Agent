@@ -58,7 +58,7 @@ export class GovernanceController {
       };
 
       const result = await governanceService.getAuditLogs(user, filters);
-      
+
       res.json({
         success: true,
         data: result.logs,
@@ -83,7 +83,7 @@ export class GovernanceController {
     try {
       const { framework } = req.params;
       const preset = await governanceService.getCompliancePreset(framework as any);
-      
+
       res.json({
         success: true,
         data: preset,
@@ -110,7 +110,7 @@ export class GovernanceController {
         user,
         scope
       );
-      
+
       res.json({
         success: true,
         data: {
@@ -141,7 +141,7 @@ export class GovernanceController {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
 
       const versions = await metricVersioningService.getVersionHistory(metricType, metricId, limit);
-      
+
       res.json({
         success: true,
         data: versions,
@@ -162,8 +162,12 @@ export class GovernanceController {
       const { metricType, metricId, version } = req.params;
       const versionNum = parseInt(version);
 
-      const metricVersion = await metricVersioningService.getVersion(metricType, metricId, versionNum);
-      
+      const metricVersion = await metricVersioningService.getVersion(
+        metricType,
+        metricId,
+        versionNum
+      );
+
       if (!metricVersion) {
         res.status(404).json({
           success: false,
@@ -199,7 +203,7 @@ export class GovernanceController {
         versionNum,
         user
       );
-      
+
       res.json({
         success: true,
         data: restoredVersion,
@@ -219,7 +223,7 @@ export class GovernanceController {
   async getVersioningStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const status = await metricVersioningService.getMetricsByVersioningStatus();
-      
+
       res.json({
         success: true,
         data: status,
@@ -242,7 +246,7 @@ export class GovernanceController {
       const user = req.user!;
 
       let data: any[];
-      
+
       // Get data based on resource type
       switch (resourceType) {
         case 'analytics':
@@ -280,7 +284,10 @@ export class GovernanceController {
         // Simple CSV conversion (would need more sophisticated implementation for complex objects)
         const csv = this.convertToCSV(data);
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="${resourceType}_export_${Date.now()}.csv"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${resourceType}_export_${Date.now()}.csv"`
+        );
         res.send(csv);
       } else {
         res.json({
@@ -323,7 +330,7 @@ export class GovernanceController {
         new Date(startDate as string),
         new Date(endDate as string)
       );
-      
+
       res.json({
         success: true,
         data: report,
@@ -342,7 +349,7 @@ export class GovernanceController {
   async cleanupExpiredData(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const results = await governanceService.cleanupExpiredData();
-      
+
       res.json({
         success: true,
         data: results,
@@ -365,8 +372,12 @@ export class GovernanceController {
       const user = req.user!;
 
       const securityContext = await governanceService.applyCompliancePreset(framework, user);
-      const isValid = piiMaskingService.validatePIIMasking(originalData, maskedData, securityContext);
-      
+      const isValid = piiMaskingService.validatePIIMasking(
+        originalData,
+        maskedData,
+        securityContext
+      );
+
       res.json({
         success: true,
         data: {
@@ -392,8 +403,12 @@ export class GovernanceController {
       const user = req.user!;
 
       const securityContext = await governanceService.applyCompliancePreset(framework, user);
-      const validation = await governanceService.validateDataAccess(securityContext, resourceType, resourceId);
-      
+      const validation = await governanceService.validateDataAccess(
+        securityContext,
+        resourceType,
+        resourceId
+      );
+
       res.json({
         success: true,
         data: validation,

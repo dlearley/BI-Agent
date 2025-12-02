@@ -205,9 +205,7 @@ describe('InsightsController', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      (insightsService.getReport as jest.Mock).mockRejectedValue(
-        new Error('Database error')
-      );
+      (insightsService.getReport as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       mockRequest.params = { reportId: 'insight_123' };
 
@@ -280,9 +278,7 @@ describe('InsightsController', () => {
     });
 
     it('should use default parameters when not provided', async () => {
-      const mockData = [
-        { timestamp: '2024-01-01', value: 100 },
-      ];
+      const mockData = [{ timestamp: '2024-01-01', value: 100 }];
 
       const mockResult = {
         anomalies: [],

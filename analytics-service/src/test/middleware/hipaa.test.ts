@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { applyHIPAARedaction, enforceMinimumThreshold } from '../../middleware/hipaa';
-import { mockAdminUser, mockViewerUser, setupTestEnvironment, cleanupTestEnvironment } from '../setup';
+import {
+  mockAdminUser,
+  mockViewerUser,
+  setupTestEnvironment,
+  cleanupTestEnvironment,
+} from '../setup';
 
 beforeEach(() => {
   setupTestEnvironment();

@@ -34,7 +34,9 @@ const mockRedisClient: RedisInnerClientMock = {
 
 const mockRedis: RedisClientMock = {
   get: jest.fn() as jest.MockedFunction<(key: string) => Promise<unknown>>,
-  set: jest.fn() as jest.MockedFunction<(key: string, value: unknown, ttl?: number) => Promise<void>>,
+  set: jest.fn() as jest.MockedFunction<
+    (key: string, value: unknown, ttl?: number) => Promise<void>
+  >,
   del: jest.fn() as jest.MockedFunction<(key: string) => Promise<void>>,
   exists: jest.fn() as jest.MockedFunction<(key: string) => Promise<boolean>>,
   flush: jest.fn() as jest.MockedFunction<() => Promise<void>>,
@@ -168,8 +170,9 @@ describe('AnalyticsService', () => {
 
     it('should throw error for unknown view', async () => {
       // Act & Assert
-      await expect(analyticsService.refreshMaterializedViews('unknown'))
-        .rejects.toThrow('Unknown view: unknown');
+      await expect(analyticsService.refreshMaterializedViews('unknown')).rejects.toThrow(
+        'Unknown view: unknown'
+      );
     });
   });
 });

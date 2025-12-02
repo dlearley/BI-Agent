@@ -1,7 +1,6 @@
 // Mock data for testing
 import { Permission, User, UserRole } from '../types';
 
-
 export const mockAdminUser: User = {
   id: 'admin-1',
   email: 'admin@test.com',

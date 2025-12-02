@@ -19,6 +19,7 @@ pnpm run seed
 ```
 
 The seed command will:
+
 1. Build the TypeScript project
 2. Run database migrations
 3. Populate all seed data
@@ -50,6 +51,7 @@ All connectors are in `active` status with configuration templates.
 5. **Product Category Performance** - Revenue and margin analysis by category
 
 All queries include:
+
 - Valid SQL query text
 - Query type (kpi, metric, custom)
 - Parameters for customization
@@ -58,6 +60,7 @@ All queries include:
 ### 4. Dashboards (3 records)
 
 #### Marketing Performance Dashboard
+
 - Customer acquisition metrics
 - Traffic sources visualization
 - Conversion funnel
@@ -65,6 +68,7 @@ All queries include:
 - 4 widgets configured
 
 #### Sales Dashboard
+
 - Total revenue metric
 - Order count and AOV
 - Revenue trend chart
@@ -73,6 +77,7 @@ All queries include:
 - 6 widgets configured
 
 #### Finance Overview Dashboard
+
 - Revenue and gross profit metrics
 - Profit margin percentage
 - Revenue vs cost comparison
@@ -81,6 +86,7 @@ All queries include:
 - 6 widgets configured
 
 All dashboards are marked as templates and include:
+
 - Layout configuration with widgets
 - Filter settings
 - Widget types: metric, chart, table
@@ -88,12 +94,14 @@ All dashboards are marked as templates and include:
 ### 5. Alerts (2 records)
 
 #### Low Inventory Alert
+
 - **Trigger:** Product inventory falls below 10 units
 - **Schedule:** Every 6 hours
 - **Channels:** Email, Slack
 - **Status:** Active
 
 #### Revenue Drop Alert
+
 - **Trigger:** Daily revenue drops more than 20% vs previous week
 - **Schedule:** Daily at 8 AM
 - **Channels:** Email, PagerDuty
@@ -102,6 +110,7 @@ All dashboards are marked as templates and include:
 ### 6. Report Templates (1 record)
 
 #### Weekly Executive Summary
+
 - **Type:** Weekly report
 - **Schedule:** Monday at 9 AM
 - **Sections:**
@@ -114,16 +123,19 @@ All dashboards are marked as templates and include:
 ### 7. Ecommerce Data
 
 #### Customers (10+ records)
+
 - Email, name, location
 - Total spent and order count
 - Distributed across USA, Canada, UK, Spain, Mexico
 
 #### Products (15+ records)
+
 - Multiple categories: Electronics, Accessories, Furniture
 - Complete product data: name, SKU, price, cost, inventory
 - Realistic pricing and inventory levels
 
 Sample products:
+
 - Wireless Mouse ($29.99)
 - Mechanical Keyboard ($89.99)
 - Office Chair ($199.99)
@@ -131,6 +143,7 @@ Sample products:
 - And more...
 
 #### Orders (50+ records)
+
 - Distributed over last 90 days
 - Multiple statuses: pending, processing, shipped, delivered
 - Realistic order calculations (subtotal + tax + shipping)
@@ -138,6 +151,7 @@ Sample products:
 - Shipping and delivery timestamps
 
 #### Order Items (100+ records)
+
 - Linked to orders and products
 - Multiple items per order
 - Realistic quantities and pricing
@@ -148,6 +162,7 @@ Sample products:
 The seed system creates the following tables:
 
 ### Core Tables
+
 - `organizations` - Organization/tenant data
 - `data_connectors` - Data source connections
 - `saved_queries` - Reusable SQL queries
@@ -156,12 +171,14 @@ The seed system creates the following tables:
 - `report_templates` - Report configurations
 
 ### Ecommerce Tables
+
 - `customers` - Customer records
 - `products` - Product catalog
 - `orders` - Order records
 - `order_items` - Order line items
 
 All tables include:
+
 - UUID primary keys
 - Timestamps (created_at, updated_at)
 - Foreign key relationships
@@ -172,10 +189,12 @@ All tables include:
 The seed system configures (but does not activate) scheduled jobs for:
 
 ### Alerts
+
 - **Low Inventory Alert:** Runs every 6 hours
 - **Revenue Drop Alert:** Runs daily at 8 AM
 
 ### Reports
+
 - **Weekly Executive Summary:** Runs Monday at 9 AM
 
 **Note:** Job scheduling uses cron patterns compatible with BullMQ. Actual job execution requires the queue worker to be running.
@@ -195,6 +214,7 @@ npm run test:coverage -- seed.test.ts
 ```
 
 Test coverage includes:
+
 - Organization creation
 - Connector seeding
 - Query creation and validation
@@ -215,6 +235,7 @@ npm run test:e2e -- seed-data.spec.ts
 ```
 
 E2E tests verify:
+
 - Demo organization accessibility
 - Data connector status
 - Saved query availability
@@ -266,7 +287,7 @@ SELECT id, name, type FROM dashboards WHERE is_template = true;
 ### Get Revenue Metrics
 
 ```sql
-SELECT 
+SELECT
   COUNT(*) as order_count,
   SUM(total) as total_revenue,
   AVG(total) as avg_order_value
@@ -278,7 +299,7 @@ WHERE status NOT IN ('cancelled', 'refunded')
 ### Get Top Products
 
 ```sql
-SELECT 
+SELECT
   p.name,
   p.category,
   SUM(oi.total_price) as revenue,
@@ -295,7 +316,7 @@ LIMIT 10;
 ### Get Customer Metrics
 
 ```sql
-SELECT 
+SELECT
   COUNT(*) as total_customers,
   COUNT(CASE WHEN order_count > 0 THEN 1 END) as customers_with_orders,
   AVG(total_spent) as avg_ltv,
@@ -346,7 +367,7 @@ layout: [
   { id: 'widget-1', type: 'metric', title: 'My Metric' },
   { id: 'widget-2', type: 'chart', title: 'My Chart', chartType: 'line' },
   // Add more widgets...
-]
+];
 ```
 
 ## Troubleshooting
@@ -391,11 +412,13 @@ psql $DATABASE_URL -c "SELECT 1"
 **Warning:** This seed data is for demo/development purposes only.
 
 Do not run the seed script in production unless:
+
 - You specifically want demo data
 - The demo organization slug doesn't conflict
 - You understand the data that will be created
 
 For production data:
+
 - Create migration scripts for schema
 - Use ETL processes for data import
 - Implement proper data validation
@@ -427,21 +450,16 @@ Use the seeded data for integration testing:
 import { db } from './config/database';
 
 // Get demo org ID
-const org = await db.queryOne(
-  'SELECT id FROM organizations WHERE slug = $1',
-  ['demo-ecommerce']
-);
+const org = await db.queryOne('SELECT id FROM organizations WHERE slug = $1', ['demo-ecommerce']);
 
 // Use in tests
-const dashboards = await db.query(
-  'SELECT * FROM dashboards WHERE organization_id = $1',
-  [org.id]
-);
+const dashboards = await db.query('SELECT * FROM dashboards WHERE organization_id = $1', [org.id]);
 ```
 
 ## Support
 
 For issues or questions about the seed system:
+
 1. Check the test files for examples
 2. Review the seed script implementation
 3. Consult the main README.md

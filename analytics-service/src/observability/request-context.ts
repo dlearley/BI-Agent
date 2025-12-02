@@ -18,12 +18,15 @@ export function requestContextMiddleware(req: Request, res: Response, next: Next
 
   res.setHeader('x-request-id', correlationId);
 
-  storage.run({
-    correlationId,
-    route: req.originalUrl,
-  }, () => {
-    next();
-  });
+  storage.run(
+    {
+      correlationId,
+      route: req.originalUrl,
+    },
+    () => {
+      next();
+    }
+  );
 }
 
 export function setUserContext(userId?: string): void {

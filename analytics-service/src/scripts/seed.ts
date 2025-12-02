@@ -10,7 +10,7 @@ class SeedService {
 
   async seedOrganization(): Promise<string> {
     console.log('🌱 Seeding organization...');
-    
+
     const result = await db.queryOne<{ id: string }>(
       `INSERT INTO organizations (name, slug, type, settings)
        VALUES ($1, $2, $3, $4)
@@ -23,8 +23,8 @@ class SeedService {
         JSON.stringify({
           industry: 'retail',
           timezone: 'America/New_York',
-          currency: 'USD'
-        })
+          currency: 'USD',
+        }),
       ]
     );
 
@@ -39,7 +39,7 @@ class SeedService {
     if (!this.organizationId) {
       await this.seedOrganization();
     }
-    
+
     const connectors = [
       {
         name: 'Production PostgreSQL',
@@ -48,8 +48,8 @@ class SeedService {
           host: 'prod-db.example.com',
           port: 5432,
           database: 'ecommerce_prod',
-          ssl: true
-        }
+          ssl: true,
+        },
       },
       {
         name: 'Analytics Warehouse',
@@ -57,17 +57,17 @@ class SeedService {
         config: {
           account: 'demo-account',
           warehouse: 'ANALYTICS_WH',
-          database: 'ANALYTICS_DB'
-        }
+          database: 'ANALYTICS_DB',
+        },
       },
       {
         name: 'Marketing API',
         type: 'api',
         config: {
           endpoint: 'https://api.marketing-platform.com/v1',
-          authType: 'oauth2'
-        }
-      }
+          authType: 'oauth2',
+        },
+      },
     ];
 
     let count = 0;
@@ -82,7 +82,7 @@ class SeedService {
           connector.type,
           JSON.stringify(connector.config),
           'active',
-          new Date()
+          new Date(),
         ]
       );
       count++;
@@ -98,7 +98,7 @@ class SeedService {
     if (!this.organizationId) {
       await this.seedOrganization();
     }
-    
+
     const queries = [
       {
         name: 'Monthly Revenue Trend',
@@ -112,7 +112,7 @@ class SeedService {
         GROUP BY DATE_TRUNC('month', created_at)
         ORDER BY month DESC`,
         query_type: 'kpi',
-        parameters: {}
+        parameters: {},
       },
       {
         name: 'Top Products by Revenue',
@@ -130,7 +130,7 @@ class SeedService {
         ORDER BY total_revenue DESC
         LIMIT 10`,
         query_type: 'metric',
-        parameters: { limit: 10 }
+        parameters: { limit: 10 },
       },
       {
         name: 'Customer Lifetime Value',
@@ -142,7 +142,7 @@ class SeedService {
         FROM customers
         WHERE order_count > 0`,
         query_type: 'kpi',
-        parameters: {}
+        parameters: {},
       },
       {
         name: 'Order Fulfillment Metrics',
@@ -156,7 +156,7 @@ class SeedService {
         GROUP BY status
         ORDER BY order_count DESC`,
         query_type: 'metric',
-        parameters: { days: 30 }
+        parameters: { days: 30 },
       },
       {
         name: 'Product Category Performance',
@@ -175,8 +175,8 @@ class SeedService {
         GROUP BY p.category
         ORDER BY revenue DESC`,
         query_type: 'custom',
-        parameters: {}
-      }
+        parameters: {},
+      },
     ];
 
     const queryIds: string[] = [];
@@ -198,7 +198,7 @@ class SeedService {
           query.query_text,
           query.query_type,
           JSON.stringify(query.parameters),
-          'system'
+          'system',
         ]
       );
       queryIds.push(result!.id);
@@ -214,7 +214,7 @@ class SeedService {
     if (!this.organizationId) {
       await this.seedOrganization();
     }
-    
+
     const dashboards = [
       {
         name: 'Marketing Performance',
@@ -224,10 +224,10 @@ class SeedService {
           { id: 'widget-1', type: 'metric', title: 'New Customers', query: 'customer_acquisition' },
           { id: 'widget-2', type: 'chart', title: 'Traffic Sources', chartType: 'pie' },
           { id: 'widget-3', type: 'chart', title: 'Conversion Funnel', chartType: 'funnel' },
-          { id: 'widget-4', type: 'table', title: 'Campaign Performance' }
+          { id: 'widget-4', type: 'table', title: 'Campaign Performance' },
         ],
         filters: { dateRange: '30d' },
-        is_template: true
+        is_template: true,
       },
       {
         name: 'Sales Dashboard',
@@ -239,10 +239,10 @@ class SeedService {
           { id: 'widget-3', type: 'metric', title: 'Average Order Value', format: 'currency' },
           { id: 'widget-4', type: 'chart', title: 'Revenue Trend', chartType: 'line' },
           { id: 'widget-5', type: 'chart', title: 'Top Products', chartType: 'bar' },
-          { id: 'widget-6', type: 'table', title: 'Recent Orders' }
+          { id: 'widget-6', type: 'table', title: 'Recent Orders' },
         ],
         filters: { dateRange: '90d' },
-        is_template: true
+        is_template: true,
       },
       {
         name: 'Finance Overview',
@@ -254,11 +254,11 @@ class SeedService {
           { id: 'widget-3', type: 'metric', title: 'Profit Margin', format: 'percentage' },
           { id: 'widget-4', type: 'chart', title: 'Revenue vs Cost', chartType: 'line' },
           { id: 'widget-5', type: 'chart', title: 'Category Profitability', chartType: 'bar' },
-          { id: 'widget-6', type: 'table', title: 'P&L Summary' }
+          { id: 'widget-6', type: 'table', title: 'P&L Summary' },
         ],
         filters: { dateRange: '12m' },
-        is_template: true
-      }
+        is_template: true,
+      },
     ];
 
     const dashboardIds: string[] = [];
@@ -281,7 +281,7 @@ class SeedService {
           JSON.stringify(dashboard.layout),
           JSON.stringify(dashboard.filters),
           dashboard.is_template,
-          'system'
+          'system',
         ]
       );
       dashboardIds.push(result!.id);
@@ -297,7 +297,7 @@ class SeedService {
     if (!this.organizationId) {
       await this.seedOrganization();
     }
-    
+
     const alerts = [
       {
         name: 'Low Inventory Alert',
@@ -306,12 +306,12 @@ class SeedService {
         condition: {
           type: 'threshold',
           operator: 'less_than',
-          field: 'inventory_quantity'
+          field: 'inventory_quantity',
         },
         threshold_value: 10,
         notification_channels: ['email', 'slack'],
         schedule_cron: '0 */6 * * *', // Every 6 hours
-        is_active: true
+        is_active: true,
       },
       {
         name: 'Revenue Drop Alert',
@@ -320,13 +320,13 @@ class SeedService {
         condition: {
           type: 'percentage_change',
           operator: 'decreases_by',
-          comparison_period: '7d'
+          comparison_period: '7d',
         },
         threshold_value: -20,
         notification_channels: ['email', 'pagerduty'],
         schedule_cron: '0 8 * * *', // Daily at 8 AM
-        is_active: true
-      }
+        is_active: true,
+      },
     ];
 
     const alertIds: string[] = [];
@@ -354,7 +354,7 @@ class SeedService {
           JSON.stringify(alert.notification_channels),
           alert.schedule_cron,
           alert.is_active,
-          'system'
+          'system',
         ]
       );
       alertIds.push(result!.id);
@@ -370,7 +370,7 @@ class SeedService {
     if (!this.organizationId) {
       await this.seedOrganization();
     }
-    
+
     const templates = [
       {
         name: 'Weekly Executive Summary',
@@ -380,26 +380,26 @@ class SeedService {
           {
             title: 'Revenue Summary',
             metrics: ['total_revenue', 'order_count', 'avg_order_value'],
-            comparison: 'previous_week'
+            comparison: 'previous_week',
           },
           {
             title: 'Top Performing Products',
             type: 'table',
-            limit: 10
+            limit: 10,
           },
           {
             title: 'Customer Insights',
-            metrics: ['new_customers', 'repeat_customers', 'customer_ltv']
+            metrics: ['new_customers', 'repeat_customers', 'customer_ltv'],
           },
           {
             title: 'Operational Metrics',
-            metrics: ['fulfillment_rate', 'avg_shipping_time', 'return_rate']
-          }
+            metrics: ['fulfillment_rate', 'avg_shipping_time', 'return_rate'],
+          },
         ],
         recipients: ['executive@example.com', 'operations@example.com'],
         schedule_cron: '0 9 * * MON', // Monday at 9 AM
-        is_active: true
-      }
+        is_active: true,
+      },
     ];
 
     const templateIds: string[] = [];
@@ -425,7 +425,7 @@ class SeedService {
           JSON.stringify(template.recipients),
           template.schedule_cron,
           template.is_active,
-          'system'
+          'system',
         ]
       );
       templateIds.push(result!.id);
@@ -441,20 +441,80 @@ class SeedService {
     if (!this.organizationId) {
       await this.seedOrganization();
     }
-    
+
     // Seed customers
     const customerIds: string[] = [];
     const customerData = [
-      { email: 'john.doe@example.com', first_name: 'John', last_name: 'Doe', country: 'USA', city: 'New York' },
-      { email: 'jane.smith@example.com', first_name: 'Jane', last_name: 'Smith', country: 'USA', city: 'Los Angeles' },
-      { email: 'bob.wilson@example.com', first_name: 'Bob', last_name: 'Wilson', country: 'USA', city: 'Chicago' },
-      { email: 'alice.brown@example.com', first_name: 'Alice', last_name: 'Brown', country: 'Canada', city: 'Toronto' },
-      { email: 'charlie.davis@example.com', first_name: 'Charlie', last_name: 'Davis', country: 'UK', city: 'London' },
-      { email: 'diana.miller@example.com', first_name: 'Diana', last_name: 'Miller', country: 'USA', city: 'Miami' },
-      { email: 'evan.garcia@example.com', first_name: 'Evan', last_name: 'Garcia', country: 'Spain', city: 'Madrid' },
-      { email: 'fiona.martinez@example.com', first_name: 'Fiona', last_name: 'Martinez', country: 'USA', city: 'Boston' },
-      { email: 'george.lopez@example.com', first_name: 'George', last_name: 'Lopez', country: 'Mexico', city: 'Mexico City' },
-      { email: 'hannah.lee@example.com', first_name: 'Hannah', last_name: 'Lee', country: 'USA', city: 'San Francisco' }
+      {
+        email: 'john.doe@example.com',
+        first_name: 'John',
+        last_name: 'Doe',
+        country: 'USA',
+        city: 'New York',
+      },
+      {
+        email: 'jane.smith@example.com',
+        first_name: 'Jane',
+        last_name: 'Smith',
+        country: 'USA',
+        city: 'Los Angeles',
+      },
+      {
+        email: 'bob.wilson@example.com',
+        first_name: 'Bob',
+        last_name: 'Wilson',
+        country: 'USA',
+        city: 'Chicago',
+      },
+      {
+        email: 'alice.brown@example.com',
+        first_name: 'Alice',
+        last_name: 'Brown',
+        country: 'Canada',
+        city: 'Toronto',
+      },
+      {
+        email: 'charlie.davis@example.com',
+        first_name: 'Charlie',
+        last_name: 'Davis',
+        country: 'UK',
+        city: 'London',
+      },
+      {
+        email: 'diana.miller@example.com',
+        first_name: 'Diana',
+        last_name: 'Miller',
+        country: 'USA',
+        city: 'Miami',
+      },
+      {
+        email: 'evan.garcia@example.com',
+        first_name: 'Evan',
+        last_name: 'Garcia',
+        country: 'Spain',
+        city: 'Madrid',
+      },
+      {
+        email: 'fiona.martinez@example.com',
+        first_name: 'Fiona',
+        last_name: 'Martinez',
+        country: 'USA',
+        city: 'Boston',
+      },
+      {
+        email: 'george.lopez@example.com',
+        first_name: 'George',
+        last_name: 'Lopez',
+        country: 'Mexico',
+        city: 'Mexico City',
+      },
+      {
+        email: 'hannah.lee@example.com',
+        first_name: 'Hannah',
+        last_name: 'Lee',
+        country: 'USA',
+        city: 'San Francisco',
+      },
     ];
 
     for (const customer of customerData) {
@@ -463,7 +523,14 @@ class SeedService {
          VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (organization_id, email) DO NOTHING
          RETURNING id`,
-        [this.organizationId, customer.email, customer.first_name, customer.last_name, customer.country, customer.city]
+        [
+          this.organizationId,
+          customer.email,
+          customer.first_name,
+          customer.last_name,
+          customer.country,
+          customer.city,
+        ]
       );
       if (result) customerIds.push(result.id);
     }
@@ -472,21 +539,126 @@ class SeedService {
     // Seed products
     const productIds: string[] = [];
     const productData = [
-      { name: 'Wireless Mouse', sku: 'MOUSE-001', category: 'Electronics', price: 29.99, cost: 12.00, inventory_quantity: 150 },
-      { name: 'Mechanical Keyboard', sku: 'KB-001', category: 'Electronics', price: 89.99, cost: 35.00, inventory_quantity: 75 },
-      { name: 'USB-C Hub', sku: 'HUB-001', category: 'Electronics', price: 49.99, cost: 20.00, inventory_quantity: 200 },
-      { name: 'Laptop Stand', sku: 'STAND-001', category: 'Accessories', price: 39.99, cost: 15.00, inventory_quantity: 100 },
-      { name: 'Webcam HD', sku: 'CAM-001', category: 'Electronics', price: 69.99, cost: 28.00, inventory_quantity: 50 },
-      { name: 'Desk Lamp', sku: 'LAMP-001', category: 'Furniture', price: 34.99, cost: 14.00, inventory_quantity: 120 },
-      { name: 'Office Chair', sku: 'CHAIR-001', category: 'Furniture', price: 199.99, cost: 80.00, inventory_quantity: 30 },
-      { name: 'Monitor 27"', sku: 'MON-001', category: 'Electronics', price: 299.99, cost: 150.00, inventory_quantity: 45 },
-      { name: 'Headphones', sku: 'HEAD-001', category: 'Electronics', price: 79.99, cost: 32.00, inventory_quantity: 90 },
-      { name: 'Desk Mat', sku: 'MAT-001', category: 'Accessories', price: 24.99, cost: 10.00, inventory_quantity: 180 },
-      { name: 'Portable SSD 1TB', sku: 'SSD-001', category: 'Electronics', price: 149.99, cost: 70.00, inventory_quantity: 60 },
-      { name: 'Cable Organizer', sku: 'ORG-001', category: 'Accessories', price: 14.99, cost: 5.00, inventory_quantity: 250 },
-      { name: 'Phone Stand', sku: 'PSTAND-001', category: 'Accessories', price: 19.99, cost: 8.00, inventory_quantity: 140 },
-      { name: 'Bluetooth Speaker', sku: 'SPEAK-001', category: 'Electronics', price: 59.99, cost: 25.00, inventory_quantity: 70 },
-      { name: 'Desk Organizer', sku: 'DORG-001', category: 'Accessories', price: 29.99, cost: 12.00, inventory_quantity: 110 }
+      {
+        name: 'Wireless Mouse',
+        sku: 'MOUSE-001',
+        category: 'Electronics',
+        price: 29.99,
+        cost: 12.0,
+        inventory_quantity: 150,
+      },
+      {
+        name: 'Mechanical Keyboard',
+        sku: 'KB-001',
+        category: 'Electronics',
+        price: 89.99,
+        cost: 35.0,
+        inventory_quantity: 75,
+      },
+      {
+        name: 'USB-C Hub',
+        sku: 'HUB-001',
+        category: 'Electronics',
+        price: 49.99,
+        cost: 20.0,
+        inventory_quantity: 200,
+      },
+      {
+        name: 'Laptop Stand',
+        sku: 'STAND-001',
+        category: 'Accessories',
+        price: 39.99,
+        cost: 15.0,
+        inventory_quantity: 100,
+      },
+      {
+        name: 'Webcam HD',
+        sku: 'CAM-001',
+        category: 'Electronics',
+        price: 69.99,
+        cost: 28.0,
+        inventory_quantity: 50,
+      },
+      {
+        name: 'Desk Lamp',
+        sku: 'LAMP-001',
+        category: 'Furniture',
+        price: 34.99,
+        cost: 14.0,
+        inventory_quantity: 120,
+      },
+      {
+        name: 'Office Chair',
+        sku: 'CHAIR-001',
+        category: 'Furniture',
+        price: 199.99,
+        cost: 80.0,
+        inventory_quantity: 30,
+      },
+      {
+        name: 'Monitor 27"',
+        sku: 'MON-001',
+        category: 'Electronics',
+        price: 299.99,
+        cost: 150.0,
+        inventory_quantity: 45,
+      },
+      {
+        name: 'Headphones',
+        sku: 'HEAD-001',
+        category: 'Electronics',
+        price: 79.99,
+        cost: 32.0,
+        inventory_quantity: 90,
+      },
+      {
+        name: 'Desk Mat',
+        sku: 'MAT-001',
+        category: 'Accessories',
+        price: 24.99,
+        cost: 10.0,
+        inventory_quantity: 180,
+      },
+      {
+        name: 'Portable SSD 1TB',
+        sku: 'SSD-001',
+        category: 'Electronics',
+        price: 149.99,
+        cost: 70.0,
+        inventory_quantity: 60,
+      },
+      {
+        name: 'Cable Organizer',
+        sku: 'ORG-001',
+        category: 'Accessories',
+        price: 14.99,
+        cost: 5.0,
+        inventory_quantity: 250,
+      },
+      {
+        name: 'Phone Stand',
+        sku: 'PSTAND-001',
+        category: 'Accessories',
+        price: 19.99,
+        cost: 8.0,
+        inventory_quantity: 140,
+      },
+      {
+        name: 'Bluetooth Speaker',
+        sku: 'SPEAK-001',
+        category: 'Electronics',
+        price: 59.99,
+        cost: 25.0,
+        inventory_quantity: 70,
+      },
+      {
+        name: 'Desk Organizer',
+        sku: 'DORG-001',
+        category: 'Accessories',
+        price: 29.99,
+        cost: 12.0,
+        inventory_quantity: 110,
+      },
     ];
 
     for (const product of productData) {
@@ -495,7 +667,15 @@ class SeedService {
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (organization_id, sku) DO NOTHING
          RETURNING id`,
-        [this.organizationId, product.name, product.sku, product.category, product.price, product.cost, product.inventory_quantity]
+        [
+          this.organizationId,
+          product.name,
+          product.sku,
+          product.category,
+          product.price,
+          product.cost,
+          product.inventory_quantity,
+        ]
       );
       if (result) productIds.push(result.id);
     }
@@ -504,20 +684,20 @@ class SeedService {
     // Seed orders and order items
     let orderCount = 0;
     let orderItemCount = 0;
-    
+
     // Create orders over the last 90 days
     const now = new Date();
     for (let i = 0; i < 50; i++) {
       const daysAgo = Math.floor(Math.random() * 90);
       const orderDate = new Date(now);
       orderDate.setDate(orderDate.getDate() - daysAgo);
-      
+
       const customerId = customerIds[Math.floor(Math.random() * customerIds.length)];
       const orderNumber = `ORD-${String(1000 + i).padStart(5, '0')}`;
-      
+
       const statuses = ['delivered', 'delivered', 'delivered', 'shipped', 'processing', 'pending'];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
-      
+
       let shippedAt = null;
       let deliveredAt = null;
       if (status === 'shipped' || status === 'delivered') {
@@ -533,18 +713,18 @@ class SeedService {
       const itemCount = Math.floor(Math.random() * 4) + 1;
       let subtotal = 0;
       const items = [];
-      
+
       for (let j = 0; j < itemCount; j++) {
         const productIndex = Math.floor(Math.random() * productIds.length);
         const productId = productIds[productIndex];
         const unitPrice = productData[productIndex].price;
         const quantity = Math.floor(Math.random() * 3) + 1;
         const totalPrice = unitPrice * quantity;
-        
+
         items.push({ productId, quantity, unitPrice, totalPrice });
         subtotal += totalPrice;
       }
-      
+
       const tax = subtotal * 0.08;
       const shipping = subtotal > 100 ? 0 : 9.99;
       const total = subtotal + tax + shipping;
@@ -554,13 +734,26 @@ class SeedService {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (organization_id, order_number) DO NOTHING
          RETURNING id`,
-        [this.organizationId, customerId, orderNumber, status, subtotal, tax, shipping, total, 'credit_card', orderDate, shippedAt, deliveredAt]
+        [
+          this.organizationId,
+          customerId,
+          orderNumber,
+          status,
+          subtotal,
+          tax,
+          shipping,
+          total,
+          'credit_card',
+          orderDate,
+          shippedAt,
+          deliveredAt,
+        ]
       );
 
       if (orderResult) {
         orderCount++;
         const orderId = orderResult.id;
-        
+
         // Insert order items
         for (const item of items) {
           await db.query(
@@ -572,11 +765,12 @@ class SeedService {
         }
       }
     }
-    
+
     console.log(`✅ Created ${orderCount} orders with ${orderItemCount} order items`);
 
     // Update customer totals
-    await db.query(`
+    await db.query(
+      `
       UPDATE customers c
       SET 
         total_spent = COALESCE((
@@ -591,8 +785,10 @@ class SeedService {
         ), 0),
         updated_at = CURRENT_TIMESTAMP
       WHERE c.organization_id = $1
-    `, [this.organizationId]);
-    
+    `,
+      [this.organizationId]
+    );
+
     console.log('✅ Updated customer totals');
   }
 
@@ -602,7 +798,7 @@ class SeedService {
     if (!this.organizationId) {
       await this.seedOrganization();
     }
-    
+
     try {
       // Get all active alerts
       const alerts = await db.query<{
@@ -650,7 +846,7 @@ class SeedService {
             alert.id,
             JSON.stringify({ alertId: alert.id, condition: alert.condition }),
             true,
-            'system'
+            'system',
           ]
         );
         scheduleCount++;
@@ -679,7 +875,7 @@ class SeedService {
             report.id,
             JSON.stringify({ reportId: report.id }),
             true,
-            'system'
+            'system',
           ]
         );
         scheduleCount++;
@@ -701,7 +897,7 @@ class SeedService {
           'analytics',
           JSON.stringify({ refresh_type: 'all' }),
           true,
-          'system'
+          'system',
         ]
       );
       scheduleCount++;
@@ -712,7 +908,6 @@ class SeedService {
       console.log('   - Analytics refresh: 1');
 
       return scheduleCount;
-      
     } catch (error) {
       console.warn('⚠️  Could not seed Celery schedules:', error);
       return 0;
@@ -721,7 +916,7 @@ class SeedService {
 
   async verifySeedData(): Promise<SeedResult[]> {
     console.log('🔍 Verifying seed data...');
-    
+
     const tables = [
       'organizations',
       'data_connectors',
@@ -733,17 +928,15 @@ class SeedService {
       'customers',
       'products',
       'orders',
-      'order_items'
+      'order_items',
     ];
 
     const results: SeedResult[] = [];
     for (const table of tables) {
-      const result = await db.queryOne<{ count: number }>(
-        `SELECT COUNT(*) as count FROM ${table}`
-      );
+      const result = await db.queryOne<{ count: number }>(`SELECT COUNT(*) as count FROM ${table}`);
       results.push({
         table,
-        count: result?.count || 0
+        count: result?.count || 0,
       });
     }
 
@@ -768,7 +961,7 @@ class SeedService {
 
       // Verify
       const results = await this.verifySeedData();
-      
+
       console.log('\n📊 Seed Summary:');
       console.log('================');
       results.forEach(r => {
@@ -778,7 +971,6 @@ class SeedService {
       console.log('\n🎉 Seed completed successfully!');
       console.log(`\n✅ Demo organization: demo-ecommerce`);
       console.log(`✅ Organization ID: ${this.organizationId}`);
-      
     } catch (error) {
       console.error('❌ Seed failed:', error);
       throw error;
@@ -788,7 +980,7 @@ class SeedService {
 
 async function main(): Promise<void> {
   const seeder = new SeedService();
-  
+
   try {
     await seeder.seed();
     process.exit(0);

@@ -1,13 +1,15 @@
 # Forecast Sandbox Demo
 
 ## Overview
+
 The Forecast Sandbox UI provides a comprehensive web interface for creating predictive models and running what-if scenarios. It integrates with ML services to generate forecasts using Prophet, ARIMA, and XGBoost models.
 
 ## Features Implemented
 
 ### ✅ Backend API
+
 - **Forecast Creation**: `/api/v1/forecast/` POST endpoint
-- **Forecast Retrieval**: `/api/v1/forecast/:id` GET endpoint  
+- **Forecast Retrieval**: `/api/v1/forecast/:id` GET endpoint
 - **Scenario Management**: `/api/v1/forecast/scenarios` POST/GET endpoints
 - **Available Metrics**: `/api/v1/forecast/metrics/available` GET endpoint
 - **Available Models**: `/api/v1/forecast/models/available` GET endpoint
@@ -18,6 +20,7 @@ The Forecast Sandbox UI provides a comprehensive web interface for creating pred
 - **HIPAA Compliance**: Row-level security and data redaction
 
 ### ✅ Frontend UI
+
 - **Interactive Dashboard**: `/forecast` route with responsive design
 - **Metric Selection**: Dropdown for revenue, pipeline_count, time_to_fill, compliance_rate, outreach_response_rate
 - **Model Selection**: Prophet, ARIMA, XGBoost options
@@ -30,6 +33,7 @@ The Forecast Sandbox UI provides a comprehensive web interface for creating pred
 - **Error Handling**: User-friendly error messages and loading states
 
 ### ✅ Database Schema
+
 - **forecasts table**: Stores forecast results with metadata
 - **forecast_scenarios table**: User scenarios and reports
 - **Row Level Security**: HIPAA-compliant access controls
@@ -37,6 +41,7 @@ The Forecast Sandbox UI provides a comprehensive web interface for creating pred
 - **Triggers**: Automatic timestamp updates
 
 ### ✅ Testing
+
 - **Playwright E2E Tests**: Comprehensive API and UI testing
 - **Mock ML Service**: Simulates ML service responses
 - **Integration Tests**: Full workflow verification
@@ -45,6 +50,7 @@ The Forecast Sandbox UI provides a comprehensive web interface for creating pred
 ## Quick Start
 
 ### 1. Start Mock Services
+
 ```bash
 # Start mock test server
 node dist/test-server.js
@@ -87,11 +93,13 @@ app.listen(8001, () => console.log('Mock ML service on port 8001'));
 ```
 
 ### 2. Access the UI
+
 Open http://localhost:3001/forecast in your browser
 
 ### 3. Test the Workflow
+
 1. **Select Metric**: Choose "revenue" from the dropdown
-2. **Choose Model**: Select "prophet" 
+2. **Choose Model**: Select "prophet"
 3. **Set Dates**: Use default or adjust start/end dates
 4. **Configure Horizon**: Set to 30 days
 5. **Adjust Assumptions**: Move the growth rate slider to 10%
@@ -103,13 +111,14 @@ Open http://localhost:3001/forecast in your browser
 ## API Examples
 
 ### Create Forecast
+
 ```bash
 curl -X POST http://localhost:3001/api/v1/forecast/ \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer mock-jwt-token" \
   -d '{
     "metric": "revenue",
-    "model": "prophet", 
+    "model": "prophet",
     "startDate": "2023-01-01T00:00:00.000Z",
     "endDate": "2023-12-31T00:00:00.000Z",
     "horizon": 30,
@@ -126,12 +135,14 @@ curl -X POST http://localhost:3001/api/v1/forecast/ \
 ```
 
 ### Get Available Metrics
+
 ```bash
 curl -X GET http://localhost:3001/api/v1/forecast/metrics/available \
   -H "Authorization: Bearer mock-jwt-token"
 ```
 
 ### Save Scenario
+
 ```bash
 curl -X POST http://localhost:3001/api/v1/forecast/scenarios \
   -H "Content-Type: application/json" \
@@ -158,6 +169,7 @@ The system integrates with an external ML service via HTTP calls to `/forecast` 
 4. **Provide**: Confidence intervals and backtest metrics
 
 ### Expected ML Service Response Format
+
 ```json
 {
   "predictions": [
@@ -185,21 +197,25 @@ The system integrates with an external ML service via HTTP calls to `/forecast` 
 ## Acceptance Criteria Met
 
 ✅ **User runs forecast producing charts & backtests**
+
 - Interactive UI for forecast configuration
-- Chart visualization with confidence intervals  
+- Chart visualization with confidence intervals
 - Backtest performance metrics display
 
-✅ **Saves sandbox scenario**  
+✅ **Saves sandbox scenario**
+
 - Scenario creation and persistence
 - Report generation capability
 - Scenario listing and management
 
 ✅ **ML service receives request with parameters**
+
 - HTTP integration with `/forecast` endpoint
 - Proper request/response format handling
 - Error handling and timeout management
 
 ✅ **Playwright test covering forecast creation**
+
 - Comprehensive E2E test suite
 - API endpoint testing
 - UI component testing

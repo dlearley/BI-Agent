@@ -11,7 +11,11 @@ declare global {
   }
 }
 
-export const hipaaCompliance = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const hipaaCompliance = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
   if (!config.hipaa.enabled) {
     next();
     return;
@@ -24,7 +28,7 @@ export const hipaaCompliance = (req: AuthenticatedRequest, res: Response, next: 
 
   // Check if user has PII access permission
   const hasPIIAccess = req.user.permissions.includes('view_pii' as any);
-  
+
   if (!hasPIIAccess) {
     // Add HIPAA compliance headers
     res.setHeader('X-HIPAA-Compliant', 'true');
@@ -68,14 +72,26 @@ export const applyHIPAARedaction = (data: any, user: any): any => {
 
 const isPIIField = (fieldName: string): boolean => {
   const piiFields = [
-    'name', 'firstName', 'lastName', 'fullName', 'email', 'phone', 'address',
-    'ssn', 'socialSecurityNumber', 'dob', 'dateOfBirth', 'id', 'userId',
-    'applicantId', 'candidateId', 'employeeId', 'patientId'
+    'name',
+    'firstName',
+    'lastName',
+    'fullName',
+    'email',
+    'phone',
+    'address',
+    'ssn',
+    'socialSecurityNumber',
+    'dob',
+    'dateOfBirth',
+    'id',
+    'userId',
+    'applicantId',
+    'candidateId',
+    'employeeId',
+    'patientId',
   ];
 
-  return piiFields.some(pii => 
-    fieldName.toLowerCase().includes(pii.toLowerCase())
-  );
+  return piiFields.some(pii => fieldName.toLowerCase().includes(pii.toLowerCase()));
 };
 
 export const enforceMinimumThreshold = (data: any): any => {
@@ -88,17 +104,22 @@ export const enforceMinimumThreshold = (data: any): any => {
     return {
       aggregated: true,
       count: data.length,
-      message: 'Data aggregated for privacy compliance'
+      message: 'Data aggregated for privacy compliance',
     };
   }
 
   // If data is an object with count field below threshold
-  if (data && typeof data === 'object' && 'count' in data && 
-      typeof data.count === 'number' && data.count < config.hipaa.minThreshold) {
+  if (
+    data &&
+    typeof data === 'object' &&
+    'count' in data &&
+    typeof data.count === 'number' &&
+    data.count < config.hipaa.minThreshold
+  ) {
     return {
       aggregated: true,
       count: data.count,
-      message: 'Data aggregated for privacy compliance'
+      message: 'Data aggregated for privacy compliance',
     };
   }
 

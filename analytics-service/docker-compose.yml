@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: analytics-backend
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/analytics_db
@@ -45,7 +45,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./analytics/sql:/docker-entrypoint-initdb.d:ro
@@ -53,7 +53,7 @@ services:
       - analytics-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d analytics_db"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d analytics_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,7 +63,7 @@ services:
     image: redis:7-alpine
     container_name: analytics-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     command: redis-server --appendonly yes --requirepass ""
     volumes:
       - redis_data:/data
@@ -71,7 +71,7 @@ services:
       - analytics-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -81,15 +81,15 @@ services:
     image: otel/opentelemetry-collector-contrib:0.91.0
     container_name: analytics-otel-collector
     command:
-      - "--config=/etc/otel-collector-config.yml"
+      - '--config=/etc/otel-collector-config.yml'
     volumes:
       - ../observability/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
     ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "8888:8888"
-      - "8889:8889"
-      - "13133:13133"
+      - '4317:4317'
+      - '4318:4318'
+      - '8888:8888'
+      - '8889:8889'
+      - '13133:13133'
     networks:
       - observability
     depends_on:
@@ -105,10 +105,10 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     ports:
-      - "16686:16686"
-      - "14268:14268"
-      - "14250:14250"
-      - "6831:6831/udp"
+      - '16686:16686'
+      - '14268:14268'
+      - '14250:14250'
+      - '6831:6831/udp'
     networks:
       - observability
     restart: unless-stopped
@@ -117,14 +117,14 @@ services:
     image: prom/prometheus:v2.48.1
     container_name: analytics-prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=30d"
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
     volumes:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - '9090:9090'
     networks:
       - observability
     restart: unless-stopped
@@ -142,7 +142,7 @@ services:
       - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "3001:3000"
+      - '3001:3000'
     networks:
       - observability
     depends_on:
@@ -186,7 +186,7 @@ services:
     environment:
       - REDIS_HOSTS=local:redis:6379
     ports:
-      - "8081:8081"
+      - '8081:8081'
     depends_on:
       - redis
     networks:
@@ -202,7 +202,7 @@ services:
       - PGADMIN_DEFAULT_EMAIL=admin@example.com
       - PGADMIN_DEFAULT_PASSWORD=admin
     ports:
-      - "8080:80"
+      - '8080:80'
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -225,7 +225,6 @@ volumes:
     driver: local
   grafana_data:
     driver: local
-
 
 networks:
   analytics-network:

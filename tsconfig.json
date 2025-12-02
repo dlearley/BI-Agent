@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false,
+    "baseUrl": ".",
+    "paths": {
+      "@bi-agent/analytics-service": ["./analytics-service/src"],
+      "@bi-agent/analytics-service/*": ["./analytics-service/src/*"],
+      "@bi-agent/dbt": ["./dbt"],
+      "@bi-agent/dbt/*": ["./dbt/*"],
+      "@bi-agent/jobs": ["./jobs/src"],
+      "@bi-agent/jobs/*": ["./jobs/src/*"]
+    }
+  },
+  "include": ["analytics-service/src/**/*", "jobs/src/**/*"],
+  "exclude": ["node_modules", "dist", "build", "**/*.test.ts", "**/*.spec.ts", "coverage"],
+  "references": [{ "path": "./analytics-service" }, { "path": "./jobs" }]
+}

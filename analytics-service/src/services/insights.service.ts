@@ -1,13 +1,7 @@
 import { mlService } from './ml.service';
 import { analyticsService } from './analytics.service';
 import { db } from '../config/database';
-import {
-  InsightsReport,
-  TimeSeriesPoint,
-  TrendAnalysis,
-  User,
-  AnalyticsQuery,
-} from '../types';
+import { InsightsReport, TimeSeriesPoint, TrendAnalysis, User, AnalyticsQuery } from '../types';
 
 export class InsightsService {
   async generateInsights(query: AnalyticsQuery, user: User): Promise<InsightsReport> {
@@ -48,9 +42,8 @@ export class InsightsService {
       detected: anomaliesResult.anomalies,
       statistics: anomaliesResult.statistics,
       totalPoints: timeSeriesData.length,
-      anomalyRate: timeSeriesData.length > 0
-        ? anomaliesResult.anomalies.length / timeSeriesData.length
-        : 0,
+      anomalyRate:
+        timeSeriesData.length > 0 ? anomaliesResult.anomalies.length / timeSeriesData.length : 0,
     };
   }
 
@@ -68,14 +61,10 @@ export class InsightsService {
       };
     }
 
-    const driversResult = mlService.analyzeDrivers(
-      metricsData.features,
-      metricsData.target,
-      {
-        method: 'importance',
-        topN: 5,
-      }
-    );
+    const driversResult = mlService.analyzeDrivers(metricsData.features, metricsData.target, {
+      method: 'importance',
+      topN: 5,
+    });
 
     return {
       topDrivers: driversResult.drivers,
@@ -144,11 +133,7 @@ export class InsightsService {
     return variance;
   }
 
-  private generateNarrative(
-    anomalies: any,
-    drivers: any,
-    trends: TrendAnalysis
-  ): string {
+  private generateNarrative(anomalies: any, drivers: any, trends: TrendAnalysis): string {
     const narrativeParts: string[] = [];
 
     narrativeParts.push(this.generateTrendNarrative(trends));
@@ -229,12 +214,13 @@ export class InsightsService {
       const facilityFilter = user.facilityId
         ? `AND facility_id = '${user.facilityId}'`
         : query.facilityId
-        ? `AND facility_id = '${query.facilityId}'`
-        : '';
+          ? `AND facility_id = '${query.facilityId}'`
+          : '';
 
-      const dateFilter = query.startDate && query.endDate
-        ? `AND date >= '${query.startDate}' AND date <= '${query.endDate}'`
-        : '';
+      const dateFilter =
+        query.startDate && query.endDate
+          ? `AND date >= '${query.startDate}' AND date <= '${query.endDate}'`
+          : '';
 
       const result = await db.query<any>(`
         SELECT 
@@ -258,7 +244,10 @@ export class InsightsService {
     }
   }
 
-  private async getMetricsData(query: AnalyticsQuery, user: User): Promise<{
+  private async getMetricsData(
+    query: AnalyticsQuery,
+    user: User
+  ): Promise<{
     target: number[];
     features: Record<string, number[]>;
   }> {
@@ -266,12 +255,13 @@ export class InsightsService {
       const facilityFilter = user.facilityId
         ? `AND facility_id = '${user.facilityId}'`
         : query.facilityId
-        ? `AND facility_id = '${query.facilityId}'`
-        : '';
+          ? `AND facility_id = '${query.facilityId}'`
+          : '';
 
-      const dateFilter = query.startDate && query.endDate
-        ? `AND date >= '${query.startDate}' AND date <= '${query.endDate}'`
-        : '';
+      const dateFilter =
+        query.startDate && query.endDate
+          ? `AND date >= '${query.startDate}' AND date <= '${query.endDate}'`
+          : '';
 
       const result = await db.query<any>(`
         SELECT 
@@ -309,7 +299,8 @@ export class InsightsService {
 
   private async saveReport(report: InsightsReport): Promise<void> {
     try {
-      await db.query(`
+      await db.query(
+        `
         INSERT INTO analytics.insights_reports (
           id,
           timestamp,
@@ -326,15 +317,17 @@ export class InsightsService {
           drivers = EXCLUDED.drivers,
           trends = EXCLUDED.trends,
           narrative = EXCLUDED.narrative
-      `, [
-        report.id,
-        report.timestamp,
-        JSON.stringify(report.query),
-        JSON.stringify(report.anomalies),
-        JSON.stringify(report.drivers),
-        JSON.stringify(report.trends),
-        report.narrative,
-      ]);
+      `,
+        [
+          report.id,
+          report.timestamp,
+          JSON.stringify(report.query),
+          JSON.stringify(report.anomalies),
+          JSON.stringify(report.drivers),
+          JSON.stringify(report.trends),
+          report.narrative,
+        ]
+      );
     } catch (error) {
       console.error('Error saving report:', error);
     }
@@ -342,7 +335,8 @@ export class InsightsService {
 
   async getReport(reportId: string): Promise<InsightsReport | null> {
     try {
-      const result = await db.query<any>(`
+      const result = await db.query<any>(
+        `
         SELECT 
           id,
           timestamp,
@@ -353,7 +347,9 @@ export class InsightsService {
           narrative
         FROM analytics.insights_reports
         WHERE id = $1
-      `, [reportId]);
+      `,
+        [reportId]
+      );
 
       if (result.length === 0) {
         return null;

@@ -17,7 +17,7 @@ test.describe('Forecast API Mock Tests', () => {
 
     // Test forecast creation endpoint
     const createResponse = await request.post('/api/v1/forecast/', {
-      data: {}
+      data: {},
     });
     expect(createResponse.status()).toBe(401);
   });
@@ -27,7 +27,7 @@ test.describe('Forecast API Mock Tests', () => {
     const uiResponse = await request.get('/forecast');
     expect(uiResponse.ok()).toBeTruthy();
     expect(uiResponse.headers()['content-type']).toContain('text/html');
-    
+
     const html = await uiResponse.text();
     expect(html).toContain('Forecast Sandbox');
     expect(html).toContain('metric to forecast');
@@ -38,7 +38,7 @@ test.describe('Forecast API Mock Tests', () => {
     const jsResponse = await request.get('/js/forecast.js');
     expect(jsResponse.ok()).toBeTruthy();
     expect(jsResponse.headers()['content-type']).toContain('application/javascript');
-    
+
     const js = await jsResponse.text();
     expect(js).toContain('ForecastSandbox');
     expect(js).toContain('generateForecast');

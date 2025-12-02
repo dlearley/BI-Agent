@@ -4,24 +4,50 @@
   "description": "BI-Agent - Analytics and Business Intelligence Platform",
   "private": true,
   "workspaces": [
-    "analytics-service"
+    "analytics-service",
+    "jobs"
   ],
   "scripts": {
+    "lint": "eslint . --ext .ts --ext .js",
+    "lint:fix": "eslint . --ext .ts --ext .js --fix",
+    "lint:workspaces": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "dev": "turbo run dev",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "prepare": "husky install",
     "install:all": "npm install",
-    "dev": "npm run dev --workspace=bi-agent-analytics",
-    "build": "npm run build --workspace=bi-agent-analytics",
-    "start": "npm run start --workspace=bi-agent-analytics",
-    "test": "npm run test --workspace=bi-agent-analytics",
-    "lint": "npm run lint --workspace=bi-agent-analytics",
-    "analytics:run": "npm run analytics:run --workspace=bi-agent-analytics",
-    "analytics:test": "npm run analytics:test --workspace=bi-agent-analytics",
     "setup": "chmod +x jobs/setup.sh && jobs/setup.sh",
     "setup:full": "jobs/setup.sh --with-sample-data --with-dbt --with-tests",
-    "seed": "npm run seed --workspace=bi-agent-analytics"
+    "seed": "npm run seed --workspace=bi-agent-analytics",
+    "analytics:run": "npm run analytics:run --workspace=bi-agent-analytics",
+    "analytics:test": "npm run analytics:test --workspace=bi-agent-analytics"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "eslint": "^8.53.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.1.0",
+    "prettier": "^3.1.0",
+    "turbo": "^1.11.0",
+    "typescript": "^5.2.2"
   },
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@8.10.0"
+  "packageManager": "pnpm@8.10.0",
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
 }

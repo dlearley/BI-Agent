@@ -23,7 +23,7 @@ describe('MLService', () => {
       expect(result.statistics.method).toBe('zscore');
       expect(result.statistics.mean).toBeGreaterThan(0);
       expect(result.statistics.stdDev).toBeGreaterThan(0);
-      
+
       const anomaly = result.anomalies[0];
       expect(anomaly.value).toBe(300);
       expect(anomaly.severity).toBeDefined();
@@ -49,7 +49,7 @@ describe('MLService', () => {
 
       expect(result.anomalies.length).toBeGreaterThan(0);
       expect(result.statistics.method).toBe('esd');
-      
+
       const highValueAnomaly = result.anomalies.find(a => a.value === 150);
       expect(highValueAnomaly).toBeDefined();
     });
@@ -64,7 +64,7 @@ describe('MLService', () => {
           value: baseValue + seasonalComponent,
         });
       }
-      
+
       data[14].value = 200;
 
       const result = mlService.detectAnomalies(data, {
@@ -105,7 +105,7 @@ describe('MLService', () => {
       });
 
       expect(result.anomalies.length).toBeGreaterThan(0);
-      
+
       const severities = result.anomalies.map(a => a.severity);
       expect(severities).toContain('high');
     });
@@ -128,7 +128,7 @@ describe('MLService', () => {
       expect(result.drivers.length).toBeLessThanOrEqual(3);
       expect(result.metadata.totalFeatures).toBe(3);
       expect(result.metadata.samplesAnalyzed).toBe(5);
-      
+
       const topDriver = result.drivers[0];
       expect(topDriver.feature).toBe('feature2');
       expect(topDriver.importance).toBeGreaterThan(0);
@@ -149,11 +149,11 @@ describe('MLService', () => {
       });
 
       expect(result.drivers.length).toBe(3);
-      
+
       const positiveDriver = result.drivers.find(d => d.feature === 'positiveCorr');
       expect(positiveDriver).toBeDefined();
       expect(positiveDriver?.direction).toBe('positive');
-      
+
       const negativeDriver = result.drivers.find(d => d.feature === 'negativeCorr');
       expect(negativeDriver).toBeDefined();
       expect(negativeDriver?.direction).toBe('negative');
@@ -234,7 +234,7 @@ describe('MLService', () => {
 
       const strongDriver = result.drivers.find(d => d.feature === 'strongDriver');
       const weakDriver = result.drivers.find(d => d.feature === 'weakDriver');
-      
+
       expect(strongDriver).toBeDefined();
       expect(weakDriver).toBeDefined();
       expect(Math.abs(strongDriver!.contribution)).toBeGreaterThan(
@@ -259,9 +259,7 @@ describe('MLService', () => {
     });
 
     it('should handle single data point', () => {
-      const data: TimeSeriesPoint[] = [
-        { timestamp: '2024-01-01', value: 100 },
-      ];
+      const data: TimeSeriesPoint[] = [{ timestamp: '2024-01-01', value: 100 }];
 
       const result = mlService.detectAnomalies(data, {
         method: 'zscore',

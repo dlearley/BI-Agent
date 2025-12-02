@@ -17,7 +17,7 @@ export class GovernanceService {
     scope?: string
   ): Promise<SecurityContext> {
     const preset = await this.getCompliancePreset(framework);
-    
+
     const securityContext: SecurityContext = {
       user,
       complianceFramework: framework,
@@ -77,7 +77,7 @@ export class GovernanceService {
     // Check export restrictions
     if (resourceType === 'export' && preset.exportRestrictions.enabled) {
       const conditions = [];
-      
+
       if (preset.exportRestrictions.approvalRequired) {
         conditions.push({
           type: 'approval_required',
@@ -171,16 +171,16 @@ export class GovernanceService {
     // Get paginated results
     const limit = filters.limit || 100;
     const offset = filters.offset || 0;
-    
+
     const query = `
       SELECT * FROM ${this.auditTable} 
       ${whereClause}
       ORDER BY timestamp DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
-    
+
     params.push(limit, offset);
-    
+
     const logs = await db.query(query, params);
 
     return {
@@ -197,7 +197,8 @@ export class GovernanceService {
       return;
     }
 
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO ${this.auditTable} (
         id, user_id, user_email, user_role, action, resource, resource_id,
         timestamp, ip_address, user_agent, facility_id, details, success,
@@ -205,23 +206,25 @@ export class GovernanceService {
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
       )
-    `, [
-      uuidv4(),
-      auditEntry.userId,
-      auditEntry.userEmail,
-      auditEntry.userRole,
-      auditEntry.action,
-      auditEntry.resource,
-      auditEntry.resourceId,
-      auditEntry.timestamp,
-      auditEntry.ipAddress,
-      auditEntry.userAgent,
-      auditEntry.facilityId,
-      JSON.stringify(auditEntry.details),
-      auditEntry.success,
-      auditEntry.errorMessage,
-      auditEntry.complianceFramework,
-    ]);
+    `,
+      [
+        uuidv4(),
+        auditEntry.userId,
+        auditEntry.userEmail,
+        auditEntry.userRole,
+        auditEntry.action,
+        auditEntry.resource,
+        auditEntry.resourceId,
+        auditEntry.timestamp,
+        auditEntry.ipAddress,
+        auditEntry.userAgent,
+        auditEntry.facilityId,
+        JSON.stringify(auditEntry.details),
+        auditEntry.success,
+        auditEntry.errorMessage,
+        auditEntry.complianceFramework,
+      ]
+    );
   }
 
   async cleanupExpiredData(): Promise<{ auditLogs: number; metricVersions: number }> {
@@ -229,17 +232,20 @@ export class GovernanceService {
 
     // Cleanup audit logs based on retention policies
     const frameworks: Array<'hipaa' | 'gdpr' | 'soc2'> = ['hipaa', 'gdpr', 'soc2'];
-    
+
     for (const framework of frameworks) {
       const retentionDays = config.governance.auditLog.retention[framework];
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-      const deleteResult = await db.query(`
+      const deleteResult = await db.query(
+        `
         DELETE FROM ${this.auditTable} 
         WHERE compliance_framework = $1 AND timestamp < $2
         RETURNING id
-      `, [framework, cutoffDate]);
+      `,
+        [framework, cutoffDate]
+      );
 
       results.auditLogs += deleteResult.length;
     }
@@ -248,11 +254,14 @@ export class GovernanceService {
     const metricRetentionDate = new Date();
     metricRetentionDate.setDate(metricRetentionDate.getDate() - 365); // 1 year for metric versions
 
-    const metricDeleteResult = await db.query(`
+    const metricDeleteResult = await db.query(
+      `
       DELETE FROM metric_versions 
       WHERE timestamp < $1
       RETURNING id
-    `, [metricRetentionDate]);
+    `,
+      [metricRetentionDate]
+    );
 
     results.metricVersions += metricDeleteResult.length;
 
@@ -267,7 +276,8 @@ export class GovernanceService {
     const preset = await this.getCompliancePreset(framework);
 
     // Get audit statistics
-    const auditStats = await db.queryOne(`
+    const auditStats = await db.queryOne(
+      `
       SELECT 
         COUNT(*) as total_actions,
         COUNT(*) FILTER (WHERE success = true) as successful_actions,
@@ -278,10 +288,13 @@ export class GovernanceService {
       WHERE compliance_framework = $1 
         AND timestamp >= $2 
         AND timestamp <= $3
-    `, [framework, startDate, endDate]);
+    `,
+      [framework, startDate, endDate]
+    );
 
     // Get PII access attempts
-    const piiAccessStats = await db.queryOne(`
+    const piiAccessStats = await db.queryOne(
+      `
       SELECT 
         COUNT(*) as total_pii_access,
         COUNT(*) FILTER (WHERE success = true) as successful_pii_access,
@@ -291,10 +304,13 @@ export class GovernanceService {
         AND action LIKE '%pii%'
         AND timestamp >= $2 
         AND timestamp <= $3
-    `, [framework, startDate, endDate]);
+    `,
+      [framework, startDate, endDate]
+    );
 
     // Get export attempts
-    const exportStats = await db.queryOne(`
+    const exportStats = await db.queryOne(
+      `
       SELECT 
         COUNT(*) as total_exports,
         COUNT(*) FILTER (WHERE success = true) as successful_exports,
@@ -304,7 +320,9 @@ export class GovernanceService {
         AND action LIKE '%export%'
         AND timestamp >= $2 
         AND timestamp <= $3
-    `, [framework, startDate, endDate]);
+    `,
+      [framework, startDate, endDate]
+    );
 
     return {
       framework,
@@ -327,13 +345,13 @@ export class GovernanceService {
 
   private getRequiredPermission(resourceType: string): Permission {
     const permissionMap: Record<string, Permission> = {
-      'analytics': Permission.VIEW_ANALYTICS,
-      'analytics_facility': Permission.VIEW_FACILITY_ANALYTICS,
-      'pii': Permission.VIEW_PII,
-      'audit_logs': Permission.VIEW_AUDIT_LOGS,
-      'governance': Permission.MANAGE_GOVERNANCE,
-      'export': Permission.EXPORT_DATA,
-      'metrics_versioned': Permission.VIEW_VERSIONED_METRICS,
+      analytics: Permission.VIEW_ANALYTICS,
+      analytics_facility: Permission.VIEW_FACILITY_ANALYTICS,
+      pii: Permission.VIEW_PII,
+      audit_logs: Permission.VIEW_AUDIT_LOGS,
+      governance: Permission.MANAGE_GOVERNANCE,
+      export: Permission.EXPORT_DATA,
+      metrics_versioned: Permission.VIEW_VERSIONED_METRICS,
     };
 
     return permissionMap[resourceType] || Permission.VIEW_ANALYTICS;

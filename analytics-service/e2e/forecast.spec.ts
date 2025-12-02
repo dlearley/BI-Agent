@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Forecast API', () => {
   const authHeaders = {
-    'Authorization': 'Bearer mock-jwt-token',
-    'Content-Type': 'application/json'
+    Authorization: 'Bearer mock-jwt-token',
+    'Content-Type': 'application/json',
   };
 
   test.beforeEach(async ({ request }) => {
@@ -13,12 +13,12 @@ test.describe('Forecast API', () => {
 
   test('should get available forecast metrics', async ({ request }) => {
     const response = await request.get('/api/v1/forecast/metrics/available', {
-      headers: authHeaders
+      headers: authHeaders,
     });
-    
+
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);
-    
+
     const data = await response.json();
     expect(data.success).toBe(true);
     expect(Array.isArray(data.data)).toBe(true);
@@ -29,12 +29,12 @@ test.describe('Forecast API', () => {
 
   test('should get available forecast models', async ({ request }) => {
     const response = await request.get('/api/v1/forecast/models/available', {
-      headers: authHeaders
+      headers: authHeaders,
     });
-    
+
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);
-    
+
     const data = await response.json();
     expect(data.success).toBe(true);
     expect(Array.isArray(data.data)).toBe(true);
@@ -53,12 +53,12 @@ test.describe('Forecast API', () => {
       frequency: 'daily',
       assumptions: {
         growthRate: 0.05,
-        seasonality: 0.1
+        seasonality: 0.1,
       },
       backtest: {
         enabled: true,
-        testPeriods: 30
-      }
+        testPeriods: 30,
+      },
     };
 
     // Mock the ML service call by intercepting the request
@@ -77,9 +77,9 @@ test.describe('Forecast API', () => {
               value: 10000,
               confidenceInterval: {
                 lower: 9000,
-                upper: 11000
-              }
-            }
+                upper: 11000,
+              },
+            },
           ],
           backtest: {
             mae: 500,
@@ -90,31 +90,31 @@ test.describe('Forecast API', () => {
               {
                 date: '2023-12-01',
                 actual: 9500,
-                predicted: 9600
-              }
-            ]
+                predicted: 9600,
+              },
+            ],
           },
           assumptions: {
             growthRate: 0.05,
-            seasonality: 0.1
+            seasonality: 0.1,
           },
           metadata: {
             createdAt: new Date().toISOString(),
             modelAccuracy: 0.95,
-            dataPoints: 365
-          }
-        })
+            dataPoints: 365,
+          },
+        }),
       });
     });
 
     const response = await request.post('/api/v1/forecast/', {
       headers: authHeaders,
-      data: forecastRequest
+      data: forecastRequest,
     });
-    
+
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);
-    
+
     const data = await response.json();
     expect(data.success).toBe(true);
     expect(data.data).toHaveProperty('id');
@@ -132,16 +132,16 @@ test.describe('Forecast API', () => {
       startDate: 'invalid-date',
       endDate: '2023-12-31T00:00:00.000Z',
       horizon: -1,
-      frequency: 'invalid-frequency'
+      frequency: 'invalid-frequency',
     };
 
     const response = await request.post('/api/v1/forecast/', {
       headers: authHeaders,
-      data: invalidRequest
+      data: invalidRequest,
     });
-    
+
     expect(response.status()).toBe(400);
-    
+
     const data = await response.json();
     expect(data.success).toBe(false);
     expect(data.error).toBe('Validation error');
@@ -156,7 +156,7 @@ test.describe('Forecast API', () => {
       startDate: '2023-01-01T00:00:00.000Z',
       endDate: '2023-12-31T00:00:00.000Z',
       horizon: 60,
-      frequency: 'weekly'
+      frequency: 'weekly',
     };
 
     // Mock the ML service call
@@ -174,23 +174,23 @@ test.describe('Forecast API', () => {
               value: 150,
               confidenceInterval: {
                 lower: 130,
-                upper: 170
-              }
-            }
+                upper: 170,
+              },
+            },
           ],
           assumptions: {},
           metadata: {
             createdAt: new Date().toISOString(),
             modelAccuracy: 0.88,
-            dataPoints: 52
-          }
-        })
+            dataPoints: 52,
+          },
+        }),
       });
     });
 
     const forecastResponse = await request.post('/api/v1/forecast/', {
       headers: authHeaders,
-      data: forecastRequest
+      data: forecastRequest,
     });
 
     const forecastData = await forecastResponse.json();
@@ -205,15 +205,15 @@ test.describe('Forecast API', () => {
         growthRate: 0.15,
         seasonality: 0.2,
         externalFactors: {
-          marketing_spend_increase: 0.3
-        }
+          marketing_spend_increase: 0.3,
+        },
       },
-      isReport: true
+      isReport: true,
     };
 
     const scenarioResponse = await request.post('/api/v1/forecast/scenarios', {
       headers: authHeaders,
-      data: scenarioRequest
+      data: scenarioRequest,
     });
 
     expect(scenarioResponse.ok()).toBeTruthy();
@@ -229,7 +229,7 @@ test.describe('Forecast API', () => {
 
   test('should retrieve forecast scenarios', async ({ request }) => {
     const response = await request.get('/api/v1/forecast/scenarios/list?includeReports=true', {
-      headers: authHeaders
+      headers: authHeaders,
     });
 
     expect(response.ok()).toBeTruthy();
@@ -242,11 +242,11 @@ test.describe('Forecast API', () => {
 
   test('should return 404 for non-existent forecast', async ({ request }) => {
     const response = await request.get('/api/v1/forecast/non-existent-id', {
-      headers: authHeaders
+      headers: authHeaders,
     });
 
     expect(response.status()).toBe(404);
-    
+
     const data = await response.json();
     expect(data.success).toBe(false);
     expect(data.error).toBe('Forecast not found');
@@ -259,7 +259,7 @@ test.describe('Forecast API', () => {
       startDate: '2023-01-01T00:00:00.000Z',
       endDate: '2023-12-31T00:00:00.000Z',
       horizon: 30,
-      frequency: 'daily'
+      frequency: 'daily',
     };
 
     // Mock ML service error
@@ -268,18 +268,18 @@ test.describe('Forecast API', () => {
         status: 500,
         contentType: 'application/json',
         body: JSON.stringify({
-          error: 'ML service internal error'
-        })
+          error: 'ML service internal error',
+        }),
       });
     });
 
     const response = await request.post('/api/v1/forecast/', {
       headers: authHeaders,
-      data: forecastRequest
+      data: forecastRequest,
     });
 
     expect(response.status()).toBe(500);
-    
+
     const data = await response.json();
     expect(data.success).toBe(false);
     expect(data.error).toBe('Failed to create forecast');

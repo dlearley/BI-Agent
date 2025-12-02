@@ -218,7 +218,7 @@ jobs:
         run: |
           cd analytics-service
           docker-compose ps
-          
+
       - name: Test analytics-backend health
         run: |
           max_attempts=30
@@ -409,7 +409,8 @@ jobs:
   all-checks:
     name: All Checks Passed
     runs-on: ubuntu-latest
-    needs: [lint, test, build, security, docker, docker-compose-smoke, typed-client-check, playwright]
+    needs:
+      [lint, test, build, security, docker, docker-compose-smoke, typed-client-check, playwright]
     if: always()
     steps:
       - name: Check all job statuses

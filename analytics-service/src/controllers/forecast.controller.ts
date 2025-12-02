@@ -2,12 +2,7 @@ import { Request, Response } from 'express';
 import { forecastService } from '../services/forecast.service';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { z } from 'zod';
-import { 
-  ForecastRequest, 
-  ForecastModel, 
-  ForecastMetric,
-  ForecastAssumptions 
-} from '../types';
+import { ForecastRequest, ForecastModel, ForecastMetric, ForecastAssumptions } from '../types';
 
 const forecastRequestSchema = z.object({
   metric: z.nativeEnum(ForecastMetric),
@@ -16,16 +11,20 @@ const forecastRequestSchema = z.object({
   endDate: z.string().datetime(),
   horizon: z.number().min(1).max(365),
   frequency: z.enum(['daily', 'weekly', 'monthly']),
-  assumptions: z.object({
-    growthRate: z.number().optional(),
-    seasonality: z.number().optional(),
-    trend: z.number().optional(),
-    externalFactors: z.record(z.number()).optional()
-  }).optional(),
-  backtest: z.object({
-    enabled: z.boolean(),
-    testPeriods: z.number().min(1).max(100)
-  }).optional()
+  assumptions: z
+    .object({
+      growthRate: z.number().optional(),
+      seasonality: z.number().optional(),
+      trend: z.number().optional(),
+      externalFactors: z.record(z.number()).optional(),
+    })
+    .optional(),
+  backtest: z
+    .object({
+      enabled: z.boolean(),
+      testPeriods: z.number().min(1).max(100),
+    })
+    .optional(),
 });
 
 const createScenarioSchema = z.object({
@@ -36,9 +35,9 @@ const createScenarioSchema = z.object({
     growthRate: z.number().optional(),
     seasonality: z.number().optional(),
     trend: z.number().optional(),
-    externalFactors: z.record(z.number()).optional()
+    externalFactors: z.record(z.number()).optional(),
   }),
-  isReport: z.boolean().default(false)
+  isReport: z.boolean().default(false),
 });
 
 export class ForecastController {
@@ -48,7 +47,7 @@ export class ForecastController {
       const user = req.user!;
 
       const forecast = await forecastService.createForecast(validatedData);
-      
+
       res.json({
         success: true,
         data: forecast,
@@ -56,7 +55,7 @@ export class ForecastController {
       });
     } catch (error) {
       console.error('Error creating forecast:', error);
-      
+
       if (error instanceof z.ZodError) {
         res.status(400).json({
           success: false,
@@ -65,7 +64,7 @@ export class ForecastController {
         });
         return;
       }
-      
+
       res.status(500).json({
         success: false,
         error: 'Failed to create forecast',
@@ -77,7 +76,7 @@ export class ForecastController {
   async getForecast(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { forecastId } = req.params;
-      
+
       if (!forecastId) {
         res.status(400).json({
           success: false,
@@ -87,7 +86,7 @@ export class ForecastController {
       }
 
       const forecast = await forecastService.getForecast(forecastId);
-      
+
       if (!forecast) {
         res.status(404).json({
           success: false,
@@ -95,7 +94,7 @@ export class ForecastController {
         });
         return;
       }
-      
+
       res.json({
         success: true,
         data: forecast,
@@ -124,7 +123,7 @@ export class ForecastController {
         user.id,
         validatedData.isReport
       );
-      
+
       res.status(201).json({
         success: true,
         data: scenario,
@@ -132,7 +131,7 @@ export class ForecastController {
       });
     } catch (error) {
       console.error('Error creating scenario:', error);
-      
+
       if (error instanceof z.ZodError) {
         res.status(400).json({
           success: false,
@@ -141,7 +140,7 @@ export class ForecastController {
         });
         return;
       }
-      
+
       res.status(500).json({
         success: false,
         error: 'Failed to create scenario',
@@ -154,12 +153,9 @@ export class ForecastController {
     try {
       const { includeReports } = req.query;
       const user = req.user!;
-      
-      const scenarios = await forecastService.getScenarios(
-        user.id, 
-        includeReports === 'true'
-      );
-      
+
+      const scenarios = await forecastService.getScenarios(user.id, includeReports === 'true');
+
       res.json({
         success: true,
         data: scenarios,
@@ -178,7 +174,7 @@ export class ForecastController {
   async getAvailableMetrics(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const metrics = await forecastService.getAvailableMetrics();
-      
+
       res.json({
         success: true,
         data: metrics,
@@ -197,7 +193,7 @@ export class ForecastController {
   async getAvailableModels(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const models = await forecastService.getAvailableModels();
-      
+
       res.json({
         success: true,
         data: models,

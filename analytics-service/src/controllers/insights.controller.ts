@@ -13,10 +13,12 @@ const insightsQuerySchema = z.object({
 });
 
 const anomalyDetectSchema = z.object({
-  data: z.array(z.object({
-    timestamp: z.string(),
-    value: z.number(),
-  })),
+  data: z.array(
+    z.object({
+      timestamp: z.string(),
+      value: z.number(),
+    })
+  ),
   method: z.enum(['esd', 'zscore']).optional(),
   seasonalPeriod: z.number().optional(),
   threshold: z.number().optional(),

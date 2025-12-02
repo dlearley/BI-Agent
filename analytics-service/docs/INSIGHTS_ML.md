@@ -17,6 +17,7 @@ Detects unusual patterns in time series data using statistical methods:
 #### API Endpoint: POST `/api/v1/insights/ml/anomaly-detect`
 
 **Request:**
+
 ```json
 {
   "data": [
@@ -31,6 +32,7 @@ Detects unusual patterns in time series data using statistical methods:
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -55,6 +57,7 @@ Detects unusual patterns in time series data using statistical methods:
 ```
 
 **Parameters:**
+
 - `method`: "esd" or "zscore" (default: "esd")
 - `seasonalPeriod`: Number of periods in seasonal cycle (default: 7)
 - `threshold`: Detection sensitivity (default: 3)
@@ -71,11 +74,12 @@ Identifies key features driving performance metrics using feature importance and
 #### API Endpoint: POST `/api/v1/insights/ml/drivers`
 
 **Request:**
+
 ```json
 {
   "features": {
     "job_postings": [10, 15, 12, 18, 20],
-    "response_rate": [0.3, 0.35, 0.32, 0.38, 0.40],
+    "response_rate": [0.3, 0.35, 0.32, 0.38, 0.4],
     "avg_salary": [75000, 76000, 75500, 77000, 78000]
   },
   "target": [25, 32, 28, 38, 45],
@@ -85,6 +89,7 @@ Identifies key features driving performance metrics using feature importance and
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -107,6 +112,7 @@ Identifies key features driving performance metrics using feature importance and
 ```
 
 **Parameters:**
+
 - `method`: "importance" or "correlation" (default: "importance")
 - `topN`: Number of top drivers to return (default: 5)
 
@@ -117,11 +123,13 @@ Generates comprehensive reports combining anomaly detection, driver analysis, tr
 #### API Endpoint: GET `/api/v1/insights`
 
 **Query Parameters:**
+
 - `startDate`: Start date (YYYY-MM-DD)
 - `endDate`: End date (YYYY-MM-DD)
 - `facilityId`: Filter by facility (optional)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -197,7 +205,7 @@ result.anomalies.forEach(anomaly => {
 ```typescript
 const features = {
   job_postings: [10, 15, 12, 18, 20, 22, 25],
-  response_rate: [0.3, 0.35, 0.32, 0.38, 0.40, 0.42, 0.45],
+  response_rate: [0.3, 0.35, 0.32, 0.38, 0.4, 0.42, 0.45],
   avg_salary_offered: [75000, 76000, 75500, 77000, 78000, 79000, 80000],
   facility_rating: [4.2, 4.2, 4.3, 4.3, 4.4, 4.4, 4.5],
 };
@@ -243,6 +251,7 @@ node dist/scripts/demo-insights.js
 ```
 
 The demo generates synthetic healthcare recruitment data and demonstrates:
+
 - Anomaly detection with seasonality
 - Driver analysis with multiple features
 - Trend calculation
@@ -270,6 +279,7 @@ npm test -- insights
 ```
 
 Test coverage includes:
+
 - Anomaly detection (ESD and Z-score methods)
 - Seasonality handling
 - Feature importance calculation
@@ -297,6 +307,7 @@ CREATE TABLE analytics.insights_reports (
 ```
 
 Run the migration:
+
 ```bash
 npm run migrate
 ```
@@ -323,6 +334,7 @@ The Insights API respects the same security and HIPAA compliance requirements as
 ### ESD (Extreme Studentized Deviate)
 
 Iteratively identifies outliers by:
+
 1. Computing test statistic for maximum deviation
 2. Comparing to critical value from t-distribution
 3. Removing outlier and repeating
@@ -331,6 +343,7 @@ Iteratively identifies outliers by:
 ### Z-Score Method
 
 Identifies outliers by:
+
 1. Removing seasonal component
 2. Computing z-score: `(value - mean) / stdDev`
 3. Flagging values where `|z-score| > threshold`
@@ -338,6 +351,7 @@ Identifies outliers by:
 ### Feature Importance
 
 Calculated as:
+
 ```
 importance = correlation * (0.7 + 0.3 * normalizedVariance)
 contribution = correlation * (featureStdDev / targetStdDev)
@@ -346,6 +360,7 @@ contribution = correlation * (featureStdDev / targetStdDev)
 ## Future Enhancements
 
 Potential improvements for future iterations:
+
 - Additional anomaly detection methods (Isolation Forest, LSTM)
 - Time series forecasting
 - Automated alerting for high-severity anomalies

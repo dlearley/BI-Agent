@@ -13,12 +13,12 @@ const forecastRequest = {
   frequency: 'daily',
   assumptions: {
     growthRate: 0.05,
-    seasonality: 0.1
+    seasonality: 0.1,
   },
   backtest: {
     enabled: true,
-    testPeriods: 30
-  }
+    testPeriods: 30,
+  },
 };
 
 function makeRequest(path, method = 'GET', data = null) {
@@ -30,17 +30,17 @@ function makeRequest(path, method = 'GET', data = null) {
       method: method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer mock-jwt-token'
-      }
+        Authorization: 'Bearer mock-jwt-token',
+      },
     };
 
     if (data) {
       options.headers['Content-Length'] = Buffer.byteLength(JSON.stringify(data));
     }
 
-    const req = http.request(options, (res) => {
+    const req = http.request(options, res => {
       let body = '';
-      res.on('data', (chunk) => {
+      res.on('data', chunk => {
         body += chunk;
       });
       res.on('end', () => {
@@ -48,20 +48,20 @@ function makeRequest(path, method = 'GET', data = null) {
           const response = {
             statusCode: res.statusCode,
             headers: res.headers,
-            body: JSON.parse(body)
+            body: JSON.parse(body),
           };
           resolve(response);
         } catch (e) {
           resolve({
             statusCode: res.statusCode,
             headers: res.headers,
-            body: body
+            body: body,
           });
         }
       });
     });
 
-    req.on('error', (err) => {
+    req.on('error', err => {
       reject(err);
     });
 
@@ -105,7 +105,7 @@ async function runTests() {
       console.log(`   Model: ${forecast.model}`);
       console.log(`   Predictions: ${forecast.predictions.length} points`);
       console.log(`   Model Accuracy: ${(forecast.metadata.modelAccuracy * 100).toFixed(1)}%`);
-      
+
       if (forecast.backtest) {
         console.log(`   Backtest MAE: ${forecast.backtest.mae.toFixed(2)}`);
         console.log(`   Backtest R²: ${forecast.backtest.r2.toFixed(3)}`);
@@ -123,12 +123,16 @@ async function runTests() {
       description: 'A test scenario for verification',
       assumptions: {
         growthRate: 0.15,
-        seasonality: 0.2
+        seasonality: 0.2,
       },
-      isReport: true
+      isReport: true,
     };
-    
-    const scenarioResponse = await makeRequest('/api/v1/forecast/scenarios', 'POST', scenarioRequest);
+
+    const scenarioResponse = await makeRequest(
+      '/api/v1/forecast/scenarios',
+      'POST',
+      scenarioRequest
+    );
     console.log(`   Status: ${scenarioResponse.statusCode}`);
     if (scenarioResponse.statusCode === 201) {
       const scenario = scenarioResponse.body.data;
@@ -146,8 +150,12 @@ async function runTests() {
     console.log(`   Status: ${uiResponse.statusCode}`);
     console.log(`   Content-Type: ${uiResponse.headers['content-type']}`);
     if (typeof uiResponse.body === 'string') {
-      console.log(`   Contains 'Forecast Sandbox': ${uiResponse.body.includes('Forecast Sandbox')}`);
-      console.log(`   Contains 'metric to forecast': ${uiResponse.body.includes('metric to forecast')}`);
+      console.log(
+        `   Contains 'Forecast Sandbox': ${uiResponse.body.includes('Forecast Sandbox')}`
+      );
+      console.log(
+        `   Contains 'metric to forecast': ${uiResponse.body.includes('metric to forecast')}`
+      );
     }
     console.log('');
 
@@ -159,7 +167,6 @@ async function runTests() {
     console.log('   - Generate forecasts with backtesting');
     console.log('   - Save scenarios as reports');
     console.log('   - View forecast charts and performance metrics');
-
   } catch (error) {
     console.error('❌ Test failed:', error.message);
     console.log('\n💡 Make sure the mock test server is running:');
