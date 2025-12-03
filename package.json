@@ -4,7 +4,9 @@
   "description": "BI-Agent - Analytics and Business Intelligence Platform",
   "private": true,
   "workspaces": [
-    "analytics-service"
+    "analytics-service",
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "install:all": "npm install",
