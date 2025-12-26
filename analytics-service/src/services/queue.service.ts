@@ -2,29 +2,23 @@ import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import config from '../config';
 import { analyticsService } from './analytics.service';
-import { catalogService } from './catalog.service';
-import { JobData, JobResult, DiscoveryRequest, ProfileRequest } from '../types';
+import { exportService } from './export.service';
+import { JobData, JobResult, ExportJobData } from '../types';
 
 interface AnalyticsJob extends Job<JobData> {
   data: JobData;
 }
 
-interface CatalogDiscoveryJob extends Job<{ organizationId: string; request: DiscoveryRequest }> {
-  data: { organizationId: string; request: DiscoveryRequest };
-}
-
-interface CatalogProfileJob extends Job<{ organizationId: string; request: ProfileRequest }> {
-  data: { organizationId: string; request: ProfileRequest };
+interface ExportJob extends Job<ExportJobData> {
+  data: ExportJobData;
 }
 
 export class QueueService {
   private connection: Redis;
   private analyticsQueue: Queue;
-  private catalogDiscoveryQueue: Queue;
-  private catalogProfileQueue: Queue;
+  private exportQueue: Queue;
   private worker!: Worker;
-  private catalogDiscoveryWorker!: Worker;
-  private catalogProfileWorker!: Worker;
+  private exportWorker!: Worker;
 
   constructor() {
     this.connection = new Redis(config.redis);
@@ -42,7 +36,7 @@ export class QueueService {
       },
     });
 
-    this.catalogDiscoveryQueue = new Queue('catalog-discovery-queue', {
+    this.exportQueue = new Queue('export-queue', {
       connection: this.connection,
       defaultJobOptions: {
         removeOnComplete: 100,
@@ -50,26 +44,13 @@ export class QueueService {
         attempts: 3,
         backoff: {
           type: 'exponential',
-          delay: 2000,
-        },
-      },
-    });
-
-    this.catalogProfileQueue = new Queue('catalog-profile-queue', {
-      connection: this.connection,
-      defaultJobOptions: {
-        removeOnComplete: 100,
-        removeOnFail: 50,
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
+          delay: 5000,
         },
       },
     });
 
     this.setupWorker();
-    this.setupCatalogWorkers();
+    this.setupExportWorker();
     this.setupScheduledJobs();
   }
 
@@ -94,22 +75,11 @@ export class QueueService {
     });
   }
 
-  private setupCatalogWorkers(): void {
-    this.catalogDiscoveryWorker = new Worker(
-      'catalog-discovery-queue',
-      async (job: CatalogDiscoveryJob) => {
-        return this.processCatalogDiscovery(job);
-      },
-      {
-        connection: this.connection,
-        concurrency: 1,
-      }
-    );
-
-    this.catalogProfileWorker = new Worker(
-      'catalog-profile-queue',
-      async (job: CatalogProfileJob) => {
-        return this.processCatalogProfile(job);
+  private setupExportWorker(): void {
+    this.exportWorker = new Worker(
+      'export-queue',
+      async (job: Job<ExportJobData>) => {
+        return this.processExportJob(job);
       },
       {
         connection: this.connection,
@@ -117,61 +87,13 @@ export class QueueService {
       }
     );
 
-    this.catalogDiscoveryWorker.on('completed', (job: CatalogDiscoveryJob, result: any) => {
-      console.log(`Catalog discovery job ${job.id} completed:`, result);
+    this.exportWorker.on('completed', (job: ExportJob, result: JobResult) => {
+      console.log(`Export job ${job.id} completed:`, result);
     });
 
-    this.catalogDiscoveryWorker.on('failed', (job: CatalogDiscoveryJob | undefined, err: Error) => {
-      console.error(`Catalog discovery job ${job?.id || 'unknown'} failed:`, err);
+    this.exportWorker.on('failed', (job: ExportJob | undefined, err: Error) => {
+      console.error(`Export job ${job?.id || 'unknown'} failed:`, err);
     });
-
-    this.catalogProfileWorker.on('completed', (job: CatalogProfileJob, result: any) => {
-      console.log(`Catalog profile job ${job.id} completed:`, result);
-    });
-
-    this.catalogProfileWorker.on('failed', (job: CatalogProfileJob | undefined, err: Error) => {
-      console.error(`Catalog profile job ${job?.id || 'unknown'} failed:`, err);
-    });
-  }
-
-  private async processCatalogDiscovery(job: CatalogDiscoveryJob): Promise<any> {
-    const { organizationId, request } = job.data;
-    try {
-      const datasets = await catalogService.discoverSchema(organizationId, request);
-      return {
-        success: true,
-        message: `Successfully discovered ${datasets.length} datasets`,
-        datasetsDiscovered: datasets.length,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        message: `Failed to discover schema: ${message}`,
-        error: message,
-      };
-    }
-  }
-
-  private async processCatalogProfile(job: CatalogProfileJob): Promise<any> {
-    const { organizationId, request } = job.data;
-    try {
-      for (const datasetId of request.dataset_ids) {
-        await catalogService.profileDataset(organizationId, datasetId, request.include_pii_detection ?? true);
-      }
-      return {
-        success: true,
-        message: `Successfully profiled ${request.dataset_ids.length} datasets`,
-        profiledDatasets: request.dataset_ids.length,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        message: `Failed to profile datasets: ${message}`,
-        error: message,
-      };
-    }
   }
 
   private async processAnalyticsJob(job: AnalyticsJob): Promise<JobResult> {
@@ -216,6 +138,18 @@ export class QueueService {
     }
   }
 
+  private async processExportJob(job: Job<ExportJobData>): Promise<JobResult> {
+    try {
+      return await exportService.processExportJob(job.data);
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to process export job`,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
   private setupScheduledJobs(): void {
     // Schedule full analytics refresh every hour
     this.analyticsQueue.add(
@@ -243,39 +177,17 @@ export class QueueService {
   }
 
   async enqueueRefreshJob(viewName?: string, delay?: number): Promise<Job<JobData>> {
-   const jobData: JobData = viewName
-     ? { type: 'refresh_view', viewName }
-     : { type: 'refresh_analytics' };
+    const jobData: JobData = viewName 
+      ? { type: 'refresh_view', viewName }
+      : { type: 'refresh_analytics' };
 
-   const jobOptions: any = {
-     delay: delay || 0,
-     removeOnComplete: 100,
-     removeOnFail: 50,
-   };
+    const jobOptions: any = {
+      delay: delay || 0,
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    };
 
-   return await this.analyticsQueue.add('refresh_analytics', jobData, jobOptions);
-  }
-
-  async enqueueCatalogDiscovery(organizationId: string, request: DiscoveryRequest): Promise<Job<any>> {
-   return await this.catalogDiscoveryQueue.add(
-     'catalog-discovery',
-     { organizationId, request },
-     {
-       removeOnComplete: 100,
-       removeOnFail: 50,
-     }
-   );
-  }
-
-  async enqueueCatalogProfile(organizationId: string, request: ProfileRequest): Promise<Job<any>> {
-   return await this.catalogProfileQueue.add(
-     'catalog-profile',
-     { organizationId, request },
-     {
-       removeOnComplete: 100,
-       removeOnFail: 50,
-     }
-   );
+    return await this.analyticsQueue.add('refresh_analytics', jobData, jobOptions);
   }
 
   async getJobStatus(jobId: string): Promise<any> {
@@ -320,18 +232,68 @@ export class QueueService {
     await this.analyticsQueue.resume();
   }
 
-  async clearQueue(): Promise<void> {
-    await this.analyticsQueue.clean(0, 0, 'completed');
-    await this.analyticsQueue.clean(0, 0, 'failed');
+  async enqueueExportJob(jobData: ExportJobData, delay?: number): Promise<Job<ExportJobData>> {
+    const jobOptions: any = {
+      delay: delay || 0,
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    };
+
+    return await this.exportQueue.add('export_data', jobData, jobOptions);
+  }
+
+  async getExportJobStatus(jobId: string): Promise<any> {
+    const job = await this.exportQueue.getJob(jobId);
+    if (!job) {
+      throw new Error(`Export job ${jobId} not found`);
+    }
+
+    return {
+      id: job.id,
+      name: job.name,
+      data: job.data,
+      progress: job.progress,
+      processedOn: job.processedOn,
+      finishedOn: job.finishedOn,
+      failedReason: job.failedReason,
+      returnvalue: job.returnvalue,
+      state: await job.getState(),
+    };
+  }
+
+  async getExportQueueStats(): Promise<any> {
+    const waiting = await this.exportQueue.getWaiting();
+    const active = await this.exportQueue.getActive();
+    const completed = await this.exportQueue.getCompleted();
+    const failed = await this.exportQueue.getFailed();
+
+    return {
+      waiting: waiting.length,
+      active: active.length,
+      completed: completed.length,
+      failed: failed.length,
+      paused: await this.exportQueue.isPaused(),
+    };
+  }
+
+  async pauseExportQueue(): Promise<void> {
+    await this.exportQueue.pause();
+  }
+
+  async resumeExportQueue(): Promise<void> {
+    await this.exportQueue.resume();
+  }
+
+  async clearExportQueue(): Promise<void> {
+    await this.exportQueue.clean(0, 0, 'completed');
+    await this.exportQueue.clean(0, 0, 'failed');
   }
 
   async close(): Promise<void> {
     await this.worker.close();
-    await this.catalogDiscoveryWorker.close();
-    await this.catalogProfileWorker.close();
+    await this.exportWorker.close();
     await this.analyticsQueue.close();
-    await this.catalogDiscoveryQueue.close();
-    await this.catalogProfileQueue.close();
+    await this.exportQueue.close();
     await this.connection.quit();
   }
 }

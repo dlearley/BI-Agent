@@ -20,7 +20,8 @@ export enum Permission {
   VIEW_AUDIT_LOGS = 'view_audit_logs',
   MANAGE_GOVERNANCE = 'manage_governance',
   EXPORT_DATA = 'export_data',
-  VIEW_VERSIONED_METRICS = 'view_versioned_metrics'
+  VIEW_VERSIONED_METRICS = 'view_versioned_metrics',
+  MANAGE_EXPORTS = 'manage_exports'
 }
 
 export interface AnalyticsKPI {
@@ -89,7 +90,7 @@ export interface CacheOptions {
 }
 
 export interface JobData {
-  type: 'refresh_analytics' | 'refresh_view';
+  type: 'refresh_analytics' | 'refresh_view' | 'export_data';
   viewName?: string;
   facilityId?: string;
 }
@@ -137,6 +138,14 @@ export interface AppConfig {
     timeout: number;
   };
   governance: GovernanceConfig;
+  exports: {
+    s3: S3Config;
+    email: EmailConfig;
+    slack: SlackConfig;
+    maxFileSize: number; // bytes
+    signedUrlTTL: number; // seconds
+    retentionDays: number;
+  };
   port?: number;
   apiVersion?: string;
   nodeEnv?: string;
@@ -378,135 +387,169 @@ export interface SecurityContext {
   facilityScope?: string;
 }
 
-// Dashboard Builder Types
-export interface DataConnector {
-  id: string;
-  organizationId: string;
-  name: string;
-  type: 'postgresql' | 'mysql' | 'bigquery' | 'snowflake' | 'redshift' | 'api';
-  config: Record<string, any>;
-  status: 'active' | 'inactive' | 'error';
-  lastSyncAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+// Export Types
+export enum ExportType {
+  DASHBOARD = 'dashboard',
+  KPI = 'kpi',
+  COMPLIANCE = 'compliance',
+  REVENUE = 'revenue',
+  OUTREACH = 'outreach'
 }
 
-export interface SavedQuery {
-  id: string;
-  organizationId: string;
-  name: string;
-  description?: string;
-  queryText: string;
-  queryType: 'kpi' | 'custom' | 'metric';
-  parameters: Record<string, any>;
-  createdBy?: string;
-  createdAt: Date;
-  updatedAt: Date;
+export enum ExportFormat {
+  CSV = 'csv',
+  PDF = 'pdf'
 }
 
-export interface DashboardWidget {
-  id: string;
-  dashboardId: string;
-  queryId?: string;
-  type: 'chart' | 'kpi' | 'table' | 'metric' | 'gauge' | 'stat';
-  title?: string;
-  description?: string;
-  chartType?: 'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'map' | 'heatmap';
-  config: Record<string, any>;
-  position: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  };
-  drillDownConfig?: Record<string, any>;
-  crossFilterConfig?: Record<string, any>;
-  createdAt: Date;
-  updatedAt: Date;
+export enum ExportJobStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
 }
 
-export interface DashboardFilter {
-  id: string;
-  dashboardId: string;
-  name: string;
-  fieldName: string;
-  filterType: 'text' | 'date' | 'number' | 'select' | 'multi-select' | 'range';
-  defaultValue?: any;
-  options?: any[];
-  isGlobal: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+export enum RecipientType {
+  EMAIL = 'email',
+  SLACK = 'slack'
 }
 
-export interface Dashboard {
+export enum NotificationStatus {
+  PENDING = 'pending',
+  SENT = 'sent',
+  FAILED = 'failed'
+}
+
+export interface ExportSchedule {
   id: string;
-  organizationId: string;
   name: string;
   description?: string;
-  type: 'marketing' | 'sales' | 'finance' | 'operations' | 'custom';
-  layout: DashboardWidget[];
-  filters: Record<string, DashboardFilter>;
-  isTemplate: boolean;
-  createdBy?: string;
+  exportType: ExportType;
+  format: ExportFormat;
+  scheduleExpression: string; // Cron expression
+  isActive: boolean;
+  filters: AnalyticsQuery;
+  templateData: EmailTemplate | SlackTemplate;
+  createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  lastRunAt?: Date;
+  nextRunAt?: Date;
 }
 
-export interface QueryResultsCache {
+export interface ExportRecipient {
   id: string;
-  queryId: string;
-  resultHash: string;
-  resultData: any[];
-  queryParameters?: Record<string, any>;
-  executionTimeMs: number;
-  rowCount: number;
-  cachedAt: Date;
-  expiresAt: Date;
-  ttlSeconds: number;
+  scheduleId: string;
+  recipientType: RecipientType;
+  recipientAddress: string;
+  isActive: boolean;
+  createdAt: Date;
 }
 
-export interface DashboardExport {
+export interface ExportJob {
   id: string;
-  dashboardId: string;
-  exportFormat: 'pdf' | 'csv' | 'json' | 'excel';
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  scheduleId?: string;
+  status: ExportJobStatus;
+  exportType: ExportType;
+  format: ExportFormat;
+  filters: AnalyticsQuery;
   filePath?: string;
-  fileSizeBytes?: number;
-  exportConfig?: Record<string, any>;
+  fileSize?: number;
+  signedUrl?: string;
+  signedUrlExpiresAt?: Date;
+  errorMessage?: string;
+  startedAt?: Date;
+  completedAt?: Date;
   createdBy?: string;
   createdAt: Date;
-  completedAt?: Date;
-  errorMessage?: string;
 }
 
-export interface QueryExecutionResult {
+export interface ExportNotification {
   id: string;
-  success: boolean;
-  data: any[];
-  columns?: Array<{
-    name: string;
-    type: string;
-  }>;
-  rowCount: number;
-  executionTimeMs: number;
-  cached: boolean;
-  error?: string;
-  cacheIndicator?: {
-    cached: boolean;
-    expiresAt?: Date;
-    ttl?: number;
-  };
+  jobId: string;
+  recipientId?: string;
+  notificationType: RecipientType;
+  recipientAddress: string;
+  status: NotificationStatus;
+  sentAt?: Date;
+  errorMessage?: string;
+  createdAt: Date;
 }
 
-export interface NLSuggestion {
-  query: string;
-  description: string;
-  score: number;
+export interface EmailTemplate {
+  subject: string;
+  body: string;
+  includeAttachment: boolean;
+  attachmentName?: string;
 }
 
-export interface SchemaColumn {
+export interface SlackTemplate {
+  message: string;
+  channel?: string;
+  includeFile: boolean;
+  fileName?: string;
+}
+
+export interface CreateExportScheduleRequest {
   name: string;
-  type: string;
-  nullable: boolean;
   description?: string;
+  exportType: ExportType;
+  format: ExportFormat;
+  scheduleExpression: string;
+  filters?: AnalyticsQuery;
+  templateData: EmailTemplate | SlackTemplate;
+  recipients: Omit<ExportRecipient, 'id' | 'scheduleId' | 'createdAt' | 'isActive'>[];
+}
+
+export interface UpdateExportScheduleRequest {
+  name?: string;
+  description?: string;
+  scheduleExpression?: string;
+  isActive?: boolean;
+  filters?: AnalyticsQuery;
+  templateData?: EmailTemplate | SlackTemplate;
+  recipients?: Omit<ExportRecipient, 'id' | 'scheduleId' | 'createdAt' | 'isActive'>[];
+}
+
+export interface ExportJobData {
+  type: 'export_data';
+  exportType: ExportType;
+  format: ExportFormat;
+  filters: AnalyticsQuery;
+  scheduleId?: string;
+  recipients?: ExportRecipient[];
+  templateData?: EmailTemplate | SlackTemplate;
+  exportJobId: string;
+  createdBy?: string;
+}
+
+export interface ExportJobResult extends JobResult {
+  exportJobId: string;
+  filePath?: string;
+  fileSize?: number;
+  signedUrl?: string;
+  signedUrlExpiresAt?: string;
+}
+
+export interface S3Config {
+  bucket: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  endpoint?: string; // For S3-compatible services
+}
+
+export interface EmailConfig {
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPassword: string;
+  fromEmail: string;
+  fromName: string;
+}
+
+export interface SlackConfig {
+  botToken: string;
+  signingSecret: string;
+  webhookUrl?: string;
 }
