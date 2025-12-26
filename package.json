@@ -3,7 +3,26 @@
   "description": "BI-Agent - Analytics and Business Intelligence Platform",
   "private": true,
   "workspaces": [
+    "analytics-service",
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "npm run dev --workspace=bi-agent-analytics",
+    "build": "npm run build --workspace=bi-agent-analytics",
+    "start": "npm run start --workspace=bi-agent-analytics",
+    "test": "npm run test --workspace=bi-agent-analytics",
+    "lint": "npm run lint --workspace=bi-agent-analytics",
+    "analytics:run": "npm run analytics:run --workspace=bi-agent-analytics",
+    "analytics:test": "npm run analytics:test --workspace=bi-agent-analytics",
+    "setup": "chmod +x jobs/setup.sh && jobs/setup.sh",
+    "setup:full": "jobs/setup.sh --with-sample-data --with-dbt --with-tests",
+    "seed": "npm run seed --workspace=bi-agent-analytics"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.10.0"
 }
