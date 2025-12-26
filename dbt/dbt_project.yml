@@ -24,6 +24,17 @@ models:
       +materialized: table
     intermediate:
       +materialized: view
+    crm:
+      +schema: analytics
+      staging:
+        +materialized: view
+        +tags: ['staging', 'crm']
+      dimensions:
+        +materialized: table
+        +tags: ['dimension', 'crm']
+      facts:
+        +materialized: table
+        +tags: ['fact', 'crm']
 
 seeds:
   analytics:

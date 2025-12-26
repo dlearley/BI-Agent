@@ -1,0 +1,227 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('DBT_DATABASE', 'analytics_db') }}"
+    schema: public
+    description: Raw source tables from the operational database
+    tables:
+      - name: accounts
+        description: Company accounts - customers and prospects
+        columns:
+          - name: id
+            description: Unique account identifier
+            tests:
+              - not_null
+              - unique
+          - name: organization_id
+            description: Reference to the organization that owns this data
+            tests:
+              - not_null
+          - name: name
+            description: Account name/company name
+            tests:
+              - not_null
+          - name: account_status
+            description: Current status of the account
+            tests:
+              - accepted_values:
+                  values: ['active', 'inactive', 'prospect', 'customer', 'churned']
+          - name: created_at
+            description: Timestamp when account was created
+          - name: updated_at
+            description: Timestamp when account was last updated
+
+      - name: contacts
+        description: Individual contacts associated with accounts
+        columns:
+          - name: id
+            description: Unique contact identifier
+            tests:
+              - not_null
+              - unique
+          - name: organization_id
+            description: Reference to the organization that owns this data
+            tests:
+              - not_null
+          - name: account_id
+            description: Reference to the associated account
+          - name: email
+            description: Contact email address
+            tests:
+              - not_null
+          - name: first_name
+            description: Contact first name
+            tests:
+              - not_null
+          - name: last_name
+            description: Contact last name
+            tests:
+              - not_null
+
+      - name: products
+        description: Product catalog
+        columns:
+          - name: id
+            description: Unique product identifier
+            tests:
+              - not_null
+              - unique
+          - name: organization_id
+            description: Reference to the organization that owns this data
+            tests:
+              - not_null
+          - name: name
+            description: Product name
+            tests:
+              - not_null
+          - name: sku
+            description: Stock keeping unit
+          - name: category
+            description: Product category
+          - name: price
+            description: Product selling price
+            tests:
+              - not_null
+
+      - name: deals
+        description: Sales opportunities and pipeline
+        columns:
+          - name: id
+            description: Unique deal identifier
+            tests:
+              - not_null
+              - unique
+          - name: organization_id
+            description: Reference to the organization that owns this data
+            tests:
+              - not_null
+          - name: account_id
+            description: Reference to the associated account
+          - name: name
+            description: Deal name/title
+            tests:
+              - not_null
+          - name: amount
+            description: Deal value/amount
+            tests:
+              - not_null
+          - name: stage
+            description: Current stage in the sales pipeline
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost']
+          - name: created_at
+            description: Timestamp when deal was created
+          - name: updated_at
+            description: Timestamp when deal was last updated
+
+      - name: deal_stage_history
+        description: Historical tracking of deal stage changes (SCD Type 2)
+        columns:
+          - name: id
+            description: Unique history record identifier
+            tests:
+              - not_null
+              - unique
+          - name: deal_id
+            description: Reference to the deal
+            tests:
+              - not_null
+          - name: stage
+            description: Stage the deal moved to
+            tests:
+              - not_null
+          - name: changed_at
+            description: Timestamp of stage change
+            tests:
+              - not_null
+          - name: previous_stage
+            description: Previous stage before the change
+
+      - name: activities
+        description: Sales and customer activities (calls, emails, meetings)
+        columns:
+          - name: id
+            description: Unique activity identifier
+            tests:
+              - not_null
+              - unique
+          - name: organization_id
+            description: Reference to the organization that owns this data
+            tests:
+              - not_null
+          - name: activity_type
+            description: Type of activity
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['call', 'email', 'meeting', 'note', 'task']
+          - name: activity_date
+            description: When the activity occurred
+            tests:
+              - not_null
+
+      - name: tickets
+        description: Customer support tickets
+        columns:
+          - name: id
+            description: Unique ticket identifier
+            tests:
+              - not_null
+              - unique
+          - name: organization_id
+            description: Reference to the organization that owns this data
+            tests:
+              - not_null
+          - name: ticket_number
+            description: Human-readable ticket number
+            tests:
+              - not_null
+          - name: subject
+            description: Ticket subject/title
+            tests:
+              - not_null
+          - name: status
+            description: Current ticket status
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['open', 'in_progress', 'waiting', 'resolved', 'closed']
+          - name: priority
+            description: Ticket priority level
+            tests:
+              - accepted_values:
+                  values: ['low', 'medium', 'high', 'urgent']
+
+      - name: orders
+        description: Customer orders (ecommerce)
+        columns:
+          - name: id
+            description: Unique order identifier
+            tests:
+              - not_null
+              - unique
+          - name: organization_id
+            description: Reference to the organization that owns this data
+            tests:
+              - not_null
+          - name: customer_id
+            description: Reference to the customer
+            tests:
+              - not_null
+          - name: order_number
+            description: Human-readable order number
+            tests:
+              - not_null
+          - name: status
+            description: Order status
+            tests:
+              - not_null
+          - name: total
+            description: Order total amount
+            tests:
+              - not_null
+          - name: created_at
+            description: When the order was created

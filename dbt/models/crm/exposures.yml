@@ -1,0 +1,143 @@
+version: 2
+
+exposures:
+  - name: sales_pipeline_dashboard
+    label: Sales Pipeline Dashboard
+    type: dashboard
+    maturity: high
+    description: |
+      Executive dashboard showing sales pipeline health, deal progression,
+      win rates, and revenue forecasting. Used by sales leadership for
+      pipeline management and forecasting.
+    owner:
+      name: Sales Operations
+      email: sales-ops@example.com
+    depends_on:
+      - ref('fact_deals')
+      - ref('fact_deal_stage_history')
+      - ref('dim_accounts')
+      - ref('dim_contacts')
+    tags: ['sales', 'executive', 'pipeline']
+
+  - name: sales_activity_dashboard
+    label: Sales Activity Dashboard
+    type: dashboard
+    maturity: high
+    description: |
+      Dashboard tracking sales team activities including calls, meetings,
+      emails, and their correlation with deal progression. Used by sales
+      managers to monitor team productivity and engagement.
+    owner:
+      name: Sales Operations
+      email: sales-ops@example.com
+    depends_on:
+      - ref('fact_activities')
+      - ref('fact_deals')
+      - ref('dim_accounts')
+      - ref('dim_contacts')
+    tags: ['sales', 'activities', 'productivity']
+
+  - name: customer_support_dashboard
+    label: Customer Support Dashboard
+    type: dashboard
+    maturity: high
+    description: |
+      Dashboard for support team showing ticket volume, resolution times,
+      SLA compliance, and customer satisfaction metrics. Used by support
+      managers to track team performance and identify issues.
+    owner:
+      name: Customer Support
+      email: support@example.com
+    depends_on:
+      - ref('fact_tickets')
+      - ref('dim_accounts')
+      - ref('dim_contacts')
+    tags: ['support', 'customer-service', 'sla']
+
+  - name: revenue_analytics_dashboard
+    label: Revenue Analytics Dashboard
+    type: dashboard
+    maturity: high
+    description: |
+      Comprehensive revenue dashboard combining order data, deal closures,
+      and customer lifetime value metrics. Used by finance and executive
+      teams for revenue reporting and analysis.
+    owner:
+      name: Finance
+      email: finance@example.com
+    depends_on:
+      - ref('fact_orders')
+      - ref('fact_deals')
+      - ref('dim_accounts')
+      - ref('dim_products')
+    tags: ['finance', 'revenue', 'executive']
+
+  - name: account_health_dashboard
+    label: Account Health Dashboard
+    type: dashboard
+    maturity: medium
+    description: |
+      Dashboard showing account health scores, engagement levels, support
+      ticket trends, and account activity. Used by account managers to
+      identify at-risk accounts and upsell opportunities.
+    owner:
+      name: Customer Success
+      email: customer-success@example.com
+    depends_on:
+      - ref('dim_accounts')
+      - ref('fact_activities')
+      - ref('fact_tickets')
+      - ref('fact_orders')
+      - ref('fact_deals')
+    tags: ['customer-success', 'accounts', 'health-score']
+
+  - name: product_performance_dashboard
+    label: Product Performance Dashboard
+    type: dashboard
+    maturity: medium
+    description: |
+      Dashboard analyzing product sales, margins, inventory levels, and
+      customer preferences. Used by product management and operations teams.
+    owner:
+      name: Product Management
+      email: product@example.com
+    depends_on:
+      - ref('dim_products')
+      - ref('fact_orders')
+    tags: ['product', 'inventory', 'sales']
+
+  - name: sales_forecast_report
+    label: Sales Forecast Report
+    type: report
+    maturity: high
+    description: |
+      Weekly sales forecast report based on pipeline value, stage probabilities,
+      and historical win rates. Distributed to executive team and sales leadership.
+    owner:
+      name: Sales Operations
+      email: sales-ops@example.com
+    depends_on:
+      - ref('fact_deals')
+      - ref('fact_deal_stage_history')
+      - ref('dim_accounts')
+    tags: ['sales', 'forecast', 'executive', 'weekly-report']
+
+  - name: customer_360_view
+    label: Customer 360 View
+    type: analysis
+    maturity: high
+    description: |
+      Comprehensive customer view combining account information, contact details,
+      deal history, support tickets, orders, and activity timeline. Used throughout
+      the organization for customer interactions.
+    owner:
+      name: Customer Experience
+      email: cx@example.com
+    depends_on:
+      - ref('dim_accounts')
+      - ref('dim_contacts')
+      - ref('fact_deals')
+      - ref('fact_activities')
+      - ref('fact_tickets')
+      - ref('fact_orders')
+    tags: ['customer', '360-view', 'comprehensive']

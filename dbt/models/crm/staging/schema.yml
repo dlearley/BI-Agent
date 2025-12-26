@@ -1,0 +1,182 @@
+version: 2
+
+models:
+  - name: stg_crm_accounts
+    description: Staging model for CRM accounts with cleaned and standardized data
+    columns:
+      - name: account_id
+        description: Unique identifier for the account
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this account
+        tests:
+          - not_null
+      - name: account_name
+        description: Name of the account/company
+        tests:
+          - not_null
+      - name: account_status
+        description: Current status of the account
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['active', 'inactive', 'prospect', 'customer', 'churned']
+
+  - name: stg_crm_contacts
+    description: Staging model for CRM contacts with cleaned and standardized data
+    columns:
+      - name: contact_id
+        description: Unique identifier for the contact
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this contact
+        tests:
+          - not_null
+      - name: email
+        description: Contact email address
+        tests:
+          - not_null
+      - name: full_name
+        description: Full name of the contact (first + last)
+        tests:
+          - not_null
+
+  - name: stg_crm_products
+    description: Staging model for products with calculated margins and enrichments
+    columns:
+      - name: product_id
+        description: Unique identifier for the product
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this product
+        tests:
+          - not_null
+      - name: product_name
+        description: Name of the product
+        tests:
+          - not_null
+      - name: price
+        description: Product selling price
+        tests:
+          - not_null
+      - name: margin_percentage
+        description: Profit margin percentage calculated from price and cost
+
+  - name: stg_crm_deals
+    description: Staging model for sales deals/opportunities with enriched flags
+    columns:
+      - name: deal_id
+        description: Unique identifier for the deal
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this deal
+        tests:
+          - not_null
+      - name: deal_name
+        description: Name or title of the deal
+        tests:
+          - not_null
+      - name: deal_amount
+        description: Expected value of the deal
+        tests:
+          - not_null
+      - name: current_stage
+        description: Current stage in the sales pipeline
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost']
+      - name: is_closed
+        description: Boolean flag indicating if deal is closed (won or lost)
+      - name: is_won
+        description: Boolean flag indicating if deal was won
+      - name: is_overdue
+        description: Boolean flag indicating if deal is past expected close date
+
+  - name: stg_crm_activities
+    description: Staging model for customer and sales activities
+    columns:
+      - name: activity_id
+        description: Unique identifier for the activity
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this activity
+        tests:
+          - not_null
+      - name: activity_type
+        description: Type of activity (call, email, meeting, etc.)
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['call', 'email', 'meeting', 'note', 'task']
+      - name: activity_date
+        description: When the activity occurred or is scheduled
+        tests:
+          - not_null
+
+  - name: stg_crm_tickets
+    description: Staging model for support tickets with resolution metrics
+    columns:
+      - name: ticket_id
+        description: Unique identifier for the ticket
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this ticket
+        tests:
+          - not_null
+      - name: ticket_number
+        description: Human-readable ticket number
+        tests:
+          - not_null
+      - name: subject
+        description: Ticket subject or title
+        tests:
+          - not_null
+      - name: status
+        description: Current status of the ticket
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['open', 'in_progress', 'waiting', 'resolved', 'closed']
+      - name: priority
+        description: Priority level of the ticket
+        tests:
+          - accepted_values:
+              values: ['low', 'medium', 'high', 'urgent']
+
+  - name: stg_crm_orders
+    description: Staging model for customer orders with fulfillment metrics
+    columns:
+      - name: order_id
+        description: Unique identifier for the order
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Reference to the organization that owns this order
+        tests:
+          - not_null
+      - name: order_number
+        description: Human-readable order number
+        tests:
+          - not_null
+      - name: order_total
+        description: Total amount of the order
+        tests:
+          - not_null
+      - name: order_status
+        description: Current status of the order
+        tests:
+          - not_null

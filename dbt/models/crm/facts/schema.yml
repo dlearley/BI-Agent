@@ -1,0 +1,275 @@
+version: 2
+
+models:
+  - name: fact_deals
+    description: |
+      Fact table for sales deals and opportunities.
+      Grain: One row per deal with current state.
+      Includes pipeline metrics, weighted values, and stage change tracking.
+    columns:
+      - name: deal_id
+        description: Unique identifier for the deal (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Foreign key to organization
+        tests:
+          - not_null
+      - name: account_id
+        description: Foreign key to account dimension
+      - name: contact_id
+        description: Foreign key to contact dimension
+      - name: deal_name
+        description: Name or title of the deal
+        tests:
+          - not_null
+      - name: deal_amount
+        description: Expected value of the deal
+        tests:
+          - not_null
+      - name: current_stage
+        description: Current stage in the sales pipeline
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost']
+      - name: probability
+        description: Probability of closing (0-100)
+      - name: weighted_amount
+        description: Deal amount weighted by probability
+      - name: is_closed
+        description: Boolean indicating if deal is closed
+      - name: is_won
+        description: Boolean indicating if deal was won
+      - name: is_overdue
+        description: Boolean indicating if deal is overdue
+      - name: days_in_pipeline
+        description: Number of days the deal has been in the pipeline
+      - name: stage_change_count
+        description: Total number of stage changes for this deal
+      - name: dw_updated_at
+        description: Data warehouse update timestamp
+        tests:
+          - not_null
+
+  - name: fact_deal_stage_history
+    description: |
+      Fact table for deal stage history - Slowly Changing Dimension Type 2.
+      Grain: One row per stage change per deal.
+      Tracks complete history of deal progression through the pipeline.
+    columns:
+      - name: history_id
+        description: Unique identifier for the history record (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: deal_id
+        description: Foreign key to the deal
+        tests:
+          - not_null
+      - name: organization_id
+        description: Foreign key to organization
+        tests:
+          - not_null
+      - name: account_id
+        description: Foreign key to account dimension
+      - name: current_stage
+        description: Stage the deal moved to
+        tests:
+          - not_null
+      - name: previous_stage
+        description: Stage the deal moved from
+      - name: changed_at
+        description: Timestamp when the stage changed
+        tests:
+          - not_null
+      - name: changed_by
+        description: User who changed the stage
+      - name: days_in_stage
+        description: Number of days spent in the previous stage
+      - name: stage_movement
+        description: Classification of movement (Forward, Backward, Initial, Closed)
+        tests:
+          - not_null
+      - name: stage_order
+        description: Numeric order of current stage in pipeline
+      - name: previous_stage_order
+        description: Numeric order of previous stage in pipeline
+      - name: dw_updated_at
+        description: Data warehouse update timestamp
+        tests:
+          - not_null
+
+  - name: fact_activities
+    description: |
+      Fact table for customer and sales activities.
+      Grain: One row per activity.
+      Includes calls, emails, meetings, notes, and tasks.
+    columns:
+      - name: activity_id
+        description: Unique identifier for the activity (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Foreign key to organization
+        tests:
+          - not_null
+      - name: account_id
+        description: Foreign key to account dimension
+      - name: contact_id
+        description: Foreign key to contact dimension
+      - name: deal_id
+        description: Foreign key to deal (if activity is related to a deal)
+      - name: activity_type
+        description: Type of activity
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['call', 'email', 'meeting', 'note', 'task']
+      - name: activity_date
+        description: When the activity occurred or is scheduled
+        tests:
+          - not_null
+      - name: activity_date_key
+        description: Date key for time-based analysis
+      - name: activity_year
+        description: Year of the activity
+      - name: activity_quarter
+        description: Quarter of the activity
+      - name: activity_month
+        description: Month of the activity
+      - name: completed
+        description: Boolean indicating if activity is completed
+      - name: activity_status
+        description: Calculated status (Completed, Overdue, Pending)
+        tests:
+          - not_null
+      - name: outcome_sentiment
+        description: Sentiment analysis of outcome (Positive, Negative, Neutral)
+      - name: dw_updated_at
+        description: Data warehouse update timestamp
+        tests:
+          - not_null
+
+  - name: fact_tickets
+    description: |
+      Fact table for customer support tickets.
+      Grain: One row per ticket.
+      Includes resolution metrics and SLA tracking.
+    columns:
+      - name: ticket_id
+        description: Unique identifier for the ticket (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Foreign key to organization
+        tests:
+          - not_null
+      - name: account_id
+        description: Foreign key to account dimension
+      - name: contact_id
+        description: Foreign key to contact dimension
+      - name: ticket_number
+        description: Human-readable ticket number
+        tests:
+          - not_null
+      - name: priority
+        description: Priority level of the ticket
+        tests:
+          - accepted_values:
+              values: ['low', 'medium', 'high', 'urgent']
+      - name: status
+        description: Current status of the ticket
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['open', 'in_progress', 'waiting', 'resolved', 'closed']
+      - name: ticket_created_date
+        description: Date when ticket was created (for time analysis)
+      - name: ticket_year
+        description: Year when ticket was created
+      - name: ticket_quarter
+        description: Quarter when ticket was created
+      - name: ticket_month
+        description: Month when ticket was created
+      - name: days_to_resolution
+        description: Days from creation to resolution
+      - name: days_to_close
+        description: Days from creation to closure
+      - name: is_resolved
+        description: Boolean indicating if ticket is resolved
+      - name: priority_score
+        description: Numeric priority score (1-4)
+      - name: sla_status
+        description: SLA compliance status (Met, Breached, Unknown)
+        tests:
+          - not_null
+      - name: dw_updated_at
+        description: Data warehouse update timestamp
+        tests:
+          - not_null
+
+  - name: fact_orders
+    description: |
+      Fact table for customer orders.
+      Grain: One row per order.
+      Includes order value, fulfillment metrics, and revenue calculations.
+    columns:
+      - name: order_id
+        description: Unique identifier for the order (primary key)
+        tests:
+          - not_null
+          - unique
+      - name: organization_id
+        description: Foreign key to organization
+        tests:
+          - not_null
+      - name: customer_id
+        description: Foreign key to customer
+        tests:
+          - not_null
+      - name: order_number
+        description: Human-readable order number
+        tests:
+          - not_null
+      - name: order_status
+        description: Current status of the order
+        tests:
+          - not_null
+      - name: subtotal
+        description: Order subtotal before tax and shipping
+      - name: tax
+        description: Tax amount
+      - name: shipping
+        description: Shipping cost
+      - name: order_total
+        description: Total order amount
+        tests:
+          - not_null
+      - name: order_date
+        description: When the order was placed
+      - name: order_date_key
+        description: Date key for time-based analysis
+      - name: order_year
+        description: Year of the order
+      - name: order_quarter
+        description: Quarter of the order
+      - name: order_month
+        description: Month of the order
+      - name: days_to_delivery
+        description: Days from order to delivery
+      - name: is_fulfilled
+        description: Boolean indicating if order was fulfilled
+      - name: revenue_amount
+        description: Adjusted revenue (excludes cancelled/refunded orders)
+      - name: order_count_metric
+        description: Metric for counting valid orders (0 for cancelled/refunded)
+      - name: tax_rate_percentage
+        description: Calculated tax rate percentage
+      - name: dw_updated_at
+        description: Data warehouse update timestamp
+        tests:
+          - not_null
