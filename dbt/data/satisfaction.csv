@@ -1,0 +1,11 @@
+id,facility_id,survey_type,score,created_at,feedback
+sat_001,fac_001,csat,5,2024-01-15 14:30:00,Excellent service and support
+sat_002,fac_001,csat,4,2024-01-20 10:15:00,Good overall experience
+sat_003,fac_001,csat,3,2024-01-25 16:45:00,Average response time
+sat_004,fac_001,nps,9,2024-02-01 11:20:00,Would definitely recommend
+sat_005,fac_001,nps,7,2024-02-05 13:00:00,Satisfied but has minor issues
+sat_006,fac_002,csat,5,2024-01-18 09:00:00,Outstanding support team
+sat_007,fac_002,csat,4,2024-01-22 15:30:00,Good value
+sat_008,fac_002,csat,2,2024-01-28 12:45:00,Slow resolution time
+sat_009,fac_002,nps,8,2024-02-02 10:30:00,Strong recommendation
+sat_010,fac_002,nps,6,2024-02-08 14:15:00,Neutral about recommending
