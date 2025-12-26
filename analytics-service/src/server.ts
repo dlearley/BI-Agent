@@ -6,8 +6,9 @@ import compression from 'compression';
 import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
+import { crmIngestionService } from './services/crm-ingestion.service';
 import analyticsRoutes from './routes/analytics';
-import catalogRoutes from './routes/catalog';
+import crmIngestionRoutes from './routes/crm-ingestion';
 import config from './config';
 import logger from './utils/logger';
 import { requestContextMiddleware } from './observability/request-context';
@@ -19,12 +20,10 @@ const app: express.Application = express();
 // Security middleware
 app.use(helmet());
 app.use(compression());
-app.use(
-  cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  credentials: true,
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -40,7 +39,10 @@ app.get('/metrics', metricsHandler);
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    const [dbHealth, redisHealth] = await Promise.all([db.healthCheck(), redis.healthCheck()]);
+    const [dbHealth, redisHealth] = await Promise.all([
+      db.healthCheck(),
+      redis.healthCheck(),
+    ]);
 
     res.json({
       status: dbHealth && redisHealth ? 'healthy' : 'unhealthy',
@@ -66,7 +68,7 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
-app.use(`/api/${apiVersion}/catalog`, catalogRoutes);
+app.use(`/api/${apiVersion}/crm-ingestion`, crmIngestionRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -86,7 +88,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     stack: err.stack,
     url: req.originalUrl,
   });
-
+  
   res.status(err.status || 500).json({
     error: 'Internal Server Error',
     message: config.nodeEnv === 'development' ? err.message : 'Something went wrong',
@@ -123,23 +125,24 @@ async function startServer(): Promise<void> {
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       logger.warn('Received shutdown signal, closing server', { signal });
-
+      
       server.close(async () => {
         logger.info('HTTP server closed');
-
+        
         try {
+          await crmIngestionService.stop();
           await queueService.close();
           logger.info('Queue service closed');
-
+          
           await redis.close();
           logger.info('Redis connection closed');
-
+          
           await db.close();
           logger.info('Database connection closed');
 
           await shutdownTelemetry();
           logger.info('Telemetry shut down');
-
+          
           logger.info('Graceful shutdown complete');
           process.exit(0);
         } catch (error) {
@@ -156,7 +159,7 @@ async function startServer(): Promise<void> {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
     // Handle uncaught exceptions
-    process.on('uncaughtException', error => {
+    process.on('uncaughtException', (error) => {
       console.error('💥 Uncaught Exception:', error);
       gracefulShutdown('uncaughtException');
     });
@@ -165,6 +168,7 @@ async function startServer(): Promise<void> {
       console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
       gracefulShutdown('unhandledRejection');
     });
+
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);

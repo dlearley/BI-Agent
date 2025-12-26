@@ -2,23 +2,22 @@ import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import config from '../config';
 import { analyticsService } from './analytics.service';
-import { exportService } from './export.service';
-import { JobData, JobResult, ExportJobData } from '../types';
+import { crmIngestionService } from './crm-ingestion.service';
+import { JobData, JobResult, IngestionJobData, IngestionResult } from '../types';
 
 interface AnalyticsJob extends Job<JobData> {
   data: JobData;
 }
 
-interface ExportJob extends Job<ExportJobData> {
-  data: ExportJobData;
+interface CRMIngestionJob extends Job<IngestionJobData> {
+  data: IngestionJobData;
 }
 
 export class QueueService {
   private connection: Redis;
   private analyticsQueue: Queue;
-  private exportQueue: Queue;
+  private crmIngestionQueue: Queue;
   private worker!: Worker;
-  private exportWorker!: Worker;
 
   constructor() {
     this.connection = new Redis(config.redis);
@@ -36,12 +35,12 @@ export class QueueService {
       },
     });
 
-    this.exportQueue = new Queue('export-queue', {
+    this.crmIngestionQueue = new Queue('crm-ingestion-queue', {
       connection: this.connection,
       defaultJobOptions: {
-        removeOnComplete: 100,
-        removeOnFail: 50,
-        attempts: 3,
+        removeOnComplete: 200,
+        removeOnFail: 100,
+        attempts: 5,
         backoff: {
           type: 'exponential',
           delay: 5000,
@@ -50,49 +49,31 @@ export class QueueService {
     });
 
     this.setupWorker();
-    this.setupExportWorker();
     this.setupScheduledJobs();
   }
 
   private setupWorker(): void {
     this.worker = new Worker(
-      'analytics-queue',
-      async (job: Job<JobData>) => {
-        return this.processAnalyticsJob(job);
+      ['analytics-queue', 'crm-ingestion-queue'],
+      async (job: Job<JobData | IngestionJobData>) => {
+        if (job.data.type === 'crm_ingestion') {
+          return this.processCRMIngestionJob(job as CRMIngestionJob);
+        } else {
+          return this.processAnalyticsJob(job as AnalyticsJob);
+        }
       },
       {
         connection: this.connection,
-        concurrency: 2,
+        concurrency: 3,
       }
     );
 
-    this.worker.on('completed', (job: AnalyticsJob, result: JobResult) => {
-      console.log(`Analytics job ${job.id} completed:`, result);
+    this.worker.on('completed', (job: AnalyticsJob | CRMIngestionJob, result: JobResult | IngestionResult) => {
+      console.log(`Job ${job.id} completed:`, result);
     });
 
-    this.worker.on('failed', (job: AnalyticsJob | undefined, err: Error) => {
-      console.error(`Analytics job ${job?.id || 'unknown'} failed:`, err);
-    });
-  }
-
-  private setupExportWorker(): void {
-    this.exportWorker = new Worker(
-      'export-queue',
-      async (job: Job<ExportJobData>) => {
-        return this.processExportJob(job);
-      },
-      {
-        connection: this.connection,
-        concurrency: 2,
-      }
-    );
-
-    this.exportWorker.on('completed', (job: ExportJob, result: JobResult) => {
-      console.log(`Export job ${job.id} completed:`, result);
-    });
-
-    this.exportWorker.on('failed', (job: ExportJob | undefined, err: Error) => {
-      console.error(`Export job ${job?.id || 'unknown'} failed:`, err);
+    this.worker.on('failed', (job: AnalyticsJob | CRMIngestionJob | undefined, err: Error) => {
+      console.error(`Job ${job?.id || 'unknown'} failed:`, err);
     });
   }
 
@@ -138,14 +119,48 @@ export class QueueService {
     }
   }
 
-  private async processExportJob(job: Job<ExportJobData>): Promise<JobResult> {
+  private async processCRMIngestionJob(job: CRMIngestionJob): Promise<IngestionResult> {
+    const startTime = Date.now();
+    const { topic, partition, offset } = job.data;
+
     try {
-      return await exportService.processExportJob(job.data);
+      // Start the CRM ingestion service if not already running
+      await crmIngestionService.start();
+
+      // Get metrics after processing
+      const metrics = await crmIngestionService.getIngestionMetrics();
+
+      const processingTime = Date.now() - startTime;
+
+      return {
+        success: true,
+        message: `CRM ingestion job completed successfully for topic: ${topic}`,
+        data: {
+          topic,
+          partition,
+          offset,
+          metrics,
+        },
+        metrics: {
+          eventsProcessed: metrics.processed_events || 0,
+          eventsSkipped: metrics.skipped_events || 0,
+          errors: metrics.failed_events || 0,
+          processingTimeMs: processingTime,
+        },
+      };
     } catch (error) {
+      const processingTime = Date.now() - startTime;
+      
       return {
         success: false,
-        message: `Failed to process export job`,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        message: `Failed to process CRM ingestion job for topic: ${topic}`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        metrics: {
+          eventsProcessed: 0,
+          eventsSkipped: 0,
+          errors: 1,
+          processingTimeMs: processingTime,
+        },
       };
     }
   }
@@ -190,6 +205,28 @@ export class QueueService {
     return await this.analyticsQueue.add('refresh_analytics', jobData, jobOptions);
   }
 
+  async enqueueCRMIngestionJob(
+    topic: string,
+    partition?: number,
+    offset?: number,
+    delay?: number
+  ): Promise<Job<IngestionJobData>> {
+    const jobData: IngestionJobData = {
+      type: 'crm_ingestion',
+      topic,
+      partition,
+      offset,
+    };
+
+    const jobOptions: any = {
+      delay: delay || 0,
+      removeOnComplete: 200,
+      removeOnFail: 100,
+    };
+
+    return await this.crmIngestionQueue.add('crm_ingestion', jobData, jobOptions);
+  }
+
   async getJobStatus(jobId: string): Promise<any> {
     const job = await this.analyticsQueue.getJob(jobId);
     if (!job) {
@@ -232,68 +269,15 @@ export class QueueService {
     await this.analyticsQueue.resume();
   }
 
-  async enqueueExportJob(jobData: ExportJobData, delay?: number): Promise<Job<ExportJobData>> {
-    const jobOptions: any = {
-      delay: delay || 0,
-      removeOnComplete: 100,
-      removeOnFail: 50,
-    };
-
-    return await this.exportQueue.add('export_data', jobData, jobOptions);
-  }
-
-  async getExportJobStatus(jobId: string): Promise<any> {
-    const job = await this.exportQueue.getJob(jobId);
-    if (!job) {
-      throw new Error(`Export job ${jobId} not found`);
-    }
-
-    return {
-      id: job.id,
-      name: job.name,
-      data: job.data,
-      progress: job.progress,
-      processedOn: job.processedOn,
-      finishedOn: job.finishedOn,
-      failedReason: job.failedReason,
-      returnvalue: job.returnvalue,
-      state: await job.getState(),
-    };
-  }
-
-  async getExportQueueStats(): Promise<any> {
-    const waiting = await this.exportQueue.getWaiting();
-    const active = await this.exportQueue.getActive();
-    const completed = await this.exportQueue.getCompleted();
-    const failed = await this.exportQueue.getFailed();
-
-    return {
-      waiting: waiting.length,
-      active: active.length,
-      completed: completed.length,
-      failed: failed.length,
-      paused: await this.exportQueue.isPaused(),
-    };
-  }
-
-  async pauseExportQueue(): Promise<void> {
-    await this.exportQueue.pause();
-  }
-
-  async resumeExportQueue(): Promise<void> {
-    await this.exportQueue.resume();
-  }
-
-  async clearExportQueue(): Promise<void> {
-    await this.exportQueue.clean(0, 0, 'completed');
-    await this.exportQueue.clean(0, 0, 'failed');
+  async clearQueue(): Promise<void> {
+    await this.analyticsQueue.clean(0, 0, 'completed');
+    await this.analyticsQueue.clean(0, 0, 'failed');
   }
 
   async close(): Promise<void> {
     await this.worker.close();
-    await this.exportWorker.close();
     await this.analyticsQueue.close();
-    await this.exportQueue.close();
+    await this.crmIngestionQueue.close();
     await this.connection.quit();
   }
 }
