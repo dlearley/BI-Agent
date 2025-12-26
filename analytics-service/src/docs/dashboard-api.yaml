@@ -1,0 +1,1108 @@
+openapi: 3.0.3
+info:
+  title: BI-Agent Dashboard API
+  description: API for managing dashboards, widgets, queries, and exports
+  version: 1.0.0
+  contact:
+    name: BI-Agent Team
+    email: support@bi-agent.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+  - url: https://api.bi-agent.com/api/v1
+    description: Production server
+
+paths:
+  /dashboard/dashboards:
+    get:
+      summary: Get all dashboards
+      description: Retrieve a list of dashboards accessible to the authenticated user
+      tags:
+        - Dashboards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: includeWidgets
+          in: query
+          description: Include widgets in response
+          schema:
+            type: boolean
+        - name: includeVersions
+          in: query
+          description: Include version history in response
+          schema:
+            type: boolean
+        - name: includeShares
+          in: query
+          description: Include sharing information in response
+          schema:
+            type: boolean
+        - name: status
+          in: query
+          description: Filter by dashboard status
+          schema:
+            type: string
+            enum: [draft, published, archived]
+        - name: tags
+          in: query
+          description: Filter by tags
+          schema:
+            type: array
+            items:
+              type: string
+        - name: createdBy
+          in: query
+          description: Filter by creator
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully retrieved dashboards
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dashboard'
+                  count:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new dashboard
+      description: Create a new dashboard with the specified configuration
+      tags:
+        - Dashboards
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDashboardRequest'
+      responses:
+        '201':
+          description: Dashboard created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Dashboard'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/dashboards/{id}:
+    get:
+      summary: Get a specific dashboard
+      description: Retrieve a dashboard by ID
+      tags:
+        - Dashboards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: includeWidgets
+          in: query
+          description: Include widgets in response
+          schema:
+            type: boolean
+        - name: includeVersions
+          in: query
+          description: Include version history in response
+          schema:
+            type: boolean
+        - name: includeShares
+          in: query
+          description: Include sharing information in response
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successfully retrieved dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Dashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update a dashboard
+      description: Update dashboard configuration
+      tags:
+        - Dashboards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDashboardRequest'
+      responses:
+        '200':
+          description: Dashboard updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Dashboard'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete a dashboard
+      description: Delete a dashboard by ID
+      tags:
+        - Dashboards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dashboard deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/dashboards/{id}/publish:
+    post:
+      summary: Publish a dashboard
+      description: Publish a dashboard to make it available to users
+      tags:
+        - Dashboards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dashboard published successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Dashboard'
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/widgets:
+    post:
+      summary: Create a new widget
+      description: Create a new widget for a dashboard
+      tags:
+        - Widgets
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWidgetRequest'
+      responses:
+        '201':
+          description: Widget created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Widget'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/widgets/{id}:
+    get:
+      summary: Get a specific widget
+      description: Retrieve a widget by ID
+      tags:
+        - Widgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully retrieved widget
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Widget'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update a widget
+      description: Update widget configuration
+      tags:
+        - Widgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWidgetRequest'
+      responses:
+        '200':
+          description: Widget updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Widget'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete a widget
+      description: Delete a widget by ID
+      tags:
+        - Widgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Widget deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/widgets/data:
+    post:
+      summary: Get widget data
+      description: Retrieve cached or fresh data for a widget
+      tags:
+        - Widgets
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WidgetDataRequest'
+      responses:
+        '200':
+          description: Successfully retrieved widget data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                  cached:
+                    type: boolean
+                  metadata:
+                    type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/queries:
+    get:
+      summary: Get all queries
+      description: Retrieve a list of queries accessible to the authenticated user
+      tags:
+        - Queries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: includeTemplates
+          in: query
+          description: Include template queries
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successfully retrieved queries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WidgetQuery'
+                  count:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new query
+      description: Create a new query for widgets
+      tags:
+        - Queries
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQueryRequest'
+      responses:
+        '201':
+          description: Query created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/WidgetQuery'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/queries/{id}:
+    get:
+      summary: Get a specific query
+      description: Retrieve a query by ID
+      tags:
+        - Queries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully retrieved query
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/WidgetQuery'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/exports:
+    post:
+      summary: Create an export job
+      description: Create a job to export a dashboard to PDF or PNG
+      tags:
+        - Exports
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '201':
+          description: Export job created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/ExportJob'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/exports/{id}:
+    get:
+      summary: Get export job status
+      description: Retrieve the status and details of an export job
+      tags:
+        - Exports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully retrieved export job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/ExportJob'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/dashboards/{dashboardId}/exports:
+    get:
+      summary: Get export jobs for a dashboard
+      description: Retrieve all export jobs for a specific dashboard
+      tags:
+        - Exports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dashboardId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully retrieved export jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExportJob'
+                  count:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Dashboard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        layout:
+          $ref: '#/components/schemas/DashboardLayout'
+        version:
+          type: integer
+        status:
+          type: string
+          enum: [draft, published, archived]
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+        isPublic:
+          type: boolean
+        facilityId:
+          type: string
+          format: uuid
+
+    DashboardLayout:
+      type: object
+      properties:
+        grid:
+          type: object
+          properties:
+            cols:
+              type: integer
+            rows:
+              type: integer
+            gap:
+              type: integer
+        widgets:
+          type: array
+          items:
+            $ref: '#/components/schemas/WidgetPosition'
+
+    WidgetPosition:
+      type: object
+      properties:
+        id:
+          type: string
+        x:
+          type: integer
+        y:
+          type: integer
+        w:
+          type: integer
+        h:
+          type: integer
+
+    Widget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dashboardId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [kpi, line, area, bar, table, heatmap, map]
+        queryId:
+          type: string
+          format: uuid
+        config:
+          type: object
+        position:
+          $ref: '#/components/schemas/WidgetPosition'
+        drillThroughConfig:
+          type: object
+        crossFilters:
+          type: array
+          items:
+            type: object
+        refreshInterval:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+
+    WidgetQuery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        queryText:
+          type: string
+        queryType:
+          type: string
+          enum: [sql, materialized_view]
+        materializedViewName:
+          type: string
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueryParameter'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+        isTemplate:
+          type: boolean
+
+    QueryParameter:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [string, number, date, boolean]
+        required:
+          type: boolean
+        defaultValue:
+          type: object
+        description:
+          type: string
+
+    ExportJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dashboardId:
+          type: string
+          format: uuid
+        exportType:
+          type: string
+          enum: [pdf, png]
+        formatOptions:
+          type: object
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        filePath:
+          type: string
+        fileSize:
+          type: integer
+        errorMessage:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+
+    CreateDashboardRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        layout:
+          $ref: '#/components/schemas/DashboardLayout'
+        tags:
+          type: array
+          items:
+            type: string
+        isPublic:
+          type: boolean
+
+    UpdateDashboardRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        layout:
+          $ref: '#/components/schemas/DashboardLayout'
+        tags:
+          type: array
+          items:
+            type: string
+        isPublic:
+          type: boolean
+
+    CreateWidgetRequest:
+      type: object
+      required:
+        - dashboardId
+        - name
+        - type
+        - queryId
+        - config
+        - position
+      properties:
+        dashboardId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [kpi, line, area, bar, table, heatmap, map]
+        queryId:
+          type: string
+          format: uuid
+        config:
+          type: object
+        position:
+          $ref: '#/components/schemas/WidgetPosition'
+        drillThroughConfig:
+          type: object
+        crossFilters:
+          type: array
+          items:
+            type: object
+        refreshInterval:
+          type: integer
+
+    UpdateWidgetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        config:
+          type: object
+        position:
+          $ref: '#/components/schemas/WidgetPosition'
+        drillThroughConfig:
+          type: object
+        crossFilters:
+          type: array
+          items:
+            type: object
+        refreshInterval:
+          type: integer
+
+    CreateQueryRequest:
+      type: object
+      required:
+        - name
+        - queryText
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        queryText:
+          type: string
+        queryType:
+          type: string
+          enum: [sql, materialized_view]
+        materializedViewName:
+          type: string
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueryParameter'
+        isTemplate:
+          type: boolean
+
+    WidgetDataRequest:
+      type: object
+      required:
+        - widgetId
+      properties:
+        widgetId:
+          type: string
+          format: uuid
+        parameters:
+          type: object
+        forceRefresh:
+          type: boolean
+        useCache:
+          type: boolean
+
+    ExportRequest:
+      type: object
+      required:
+        - dashboardId
+        - exportType
+      properties:
+        dashboardId:
+          type: string
+          format: uuid
+        exportType:
+          type: string
+          enum: [pdf, png]
+        formatOptions:
+          type: object
+        widgetIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        filters:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              error:
+                type: string
+              details:
+                type: object
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              error:
+                type: string
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              error:
+                type: string
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              error:
+                type: string
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              error:
+                type: string
+              message:
+                type: string
+
+tags:
+  - name: Dashboards
+    description: Dashboard management operations
+  - name: Widgets
+    description: Widget management operations
+  - name: Queries
+    description: Query management operations
+  - name: Exports
+    description: Export operations
