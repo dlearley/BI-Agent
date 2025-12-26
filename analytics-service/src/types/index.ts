@@ -20,10 +20,7 @@ export enum Permission {
   VIEW_AUDIT_LOGS = 'view_audit_logs',
   MANAGE_GOVERNANCE = 'manage_governance',
   EXPORT_DATA = 'export_data',
-  VIEW_VERSIONED_METRICS = 'view_versioned_metrics',
-  MANAGE_DASHBOARDS = 'manage_dashboards',
-  VIEW_DASHBOARDS = 'view_dashboards',
-  SHARE_DASHBOARDS = 'share_dashboards'
+  VIEW_VERSIONED_METRICS = 'view_versioned_metrics'
 }
 
 export interface AnalyticsKPI {
@@ -138,6 +135,15 @@ export interface AppConfig {
   mlService: {
     url: string;
     timeout: number;
+  };
+  kafka: {
+    brokers: string[];
+    ssl?: boolean;
+    sasl?: {
+      mechanism: string;
+      username?: string;
+      password?: string;
+    };
   };
   governance: GovernanceConfig;
   port?: number;
@@ -372,319 +378,6 @@ export interface MetricVersion {
   complianceFramework?: 'hipaa' | 'gdpr' | 'soc2';
 }
 
-// Dashboard types
-export enum WidgetType {
-  KPI = 'kpi',
-  LINE = 'line',
-  AREA = 'area',
-  BAR = 'bar',
-  TABLE = 'table',
-  HEATMAP = 'heatmap',
-  MAP = 'map'
-}
-
-export enum DashboardStatus {
-  DRAFT = 'draft',
-  PUBLISHED = 'published',
-  ARCHIVED = 'archived'
-}
-
-export enum ExportType {
-  PDF = 'pdf',
-  PNG = 'png'
-}
-
-export enum ExportStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  FAILED = 'failed'
-}
-
-export interface Dashboard {
-  id: string;
-  name: string;
-  description?: string;
-  layout: DashboardLayout;
-  version: number;
-  status: DashboardStatus;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-  publishedAt?: Date;
-  tags: string[];
-  isPublic: boolean;
-  facilityId?: string;
-}
-
-export interface DashboardLayout {
-  grid: {
-    cols: number;
-    rows: number;
-    gap: number;
-  };
-  widgets: WidgetPosition[];
-}
-
-export interface WidgetPosition {
-  id: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface Widget {
-  id: string;
-  dashboardId: string;
-  name: string;
-  type: WidgetType;
-  queryId: string;
-  config: WidgetConfig;
-  position: WidgetPosition;
-  drillThroughConfig?: DrillThroughConfig;
-  crossFilters?: CrossFilter[];
-  refreshInterval: number;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;
-}
-
-export interface WidgetConfig {
-  title?: string;
-  subtitle?: string;
-  colors?: string[];
-  legend?: {
-    show: boolean;
-    position?: 'top' | 'bottom' | 'left' | 'right';
-  };
-  axes?: {
-    x?: {
-      label?: string;
-      type?: 'category' | 'time' | 'value';
-    };
-    y?: {
-      label?: string;
-      min?: number;
-      max?: number;
-    };
-  };
-  table?: {
-    pagination?: boolean;
-    pageSize?: number;
-    sortable?: boolean;
-    filterable?: boolean;
-  };
-  kpi?: {
-    format?: 'number' | 'currency' | 'percentage';
-    trend?: boolean;
-    comparison?: {
-      period: string;
-      type: 'absolute' | 'percentage';
-    };
-  };
-  map?: {
-    center?: [number, number];
-    zoom?: number;
-    layers?: MapLayer[];
-  };
-  [key: string]: any;
-}
-
-export interface MapLayer {
-  type: 'choropleth' | 'scatter' | 'heatmap';
-  data: any;
-  options: any;
-}
-
-export interface DrillThroughConfig {
-  enabled: boolean;
-  targetDashboard?: string;
-  targetWidget?: string;
-  filters?: DrillThroughFilter[];
-}
-
-export interface DrillThroughFilter {
-  sourceField: string;
-  targetField: string;
-  type: 'equals' | 'contains' | 'greater_than' | 'less_than';
-}
-
-export interface CrossFilter {
-  sourceWidget: string;
-  targetWidget: string;
-  field: string;
-  type: 'filter' | 'highlight';
-}
-
-export interface WidgetQuery {
-  id: string;
-  name: string;
-  description?: string;
-  queryText: string;
-  queryType: 'sql' | 'materialized_view';
-  materializedViewName?: string;
-  parameters: QueryParameter[];
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;
-  isTemplate: boolean;
-}
-
-export interface QueryParameter {
-  name: string;
-  type: 'string' | 'number' | 'date' | 'boolean';
-  required: boolean;
-  defaultValue?: any;
-  description?: string;
-}
-
-export interface WidgetDataCache {
-  id: string;
-  widgetId: string;
-  queryHash: string;
-  data: any;
-  metadata: {
-    rowCount?: number;
-    executionTime?: number;
-    lastUpdated?: Date;
-  };
-  createdAt: Date;
-  expiresAt: Date;
-  refreshCount: number;
-  lastRefreshedAt: Date;
-}
-
-export interface DashboardVersion {
-  id: string;
-  dashboardId: string;
-  version: number;
-  name: string;
-  description?: string;
-  layout: DashboardLayout;
-  widgetsSnapshot: Widget[];
-  createdAt: Date;
-  createdBy: string;
-  changeDescription?: string;
-  isPublished: boolean;
-}
-
-export interface DashboardShare {
-  id: string;
-  dashboardId: string;
-  sharedWithUserId?: string;
-  sharedWithRole?: string;
-  permissionLevel: 'view' | 'edit' | 'admin';
-  sharedBy: string;
-  sharedAt: Date;
-  expiresAt?: Date;
-}
-
-export interface ExportJob {
-  id: string;
-  dashboardId: string;
-  exportType: ExportType;
-  formatOptions: ExportFormatOptions;
-  status: ExportStatus;
-  filePath?: string;
-  fileSize?: number;
-  errorMessage?: string;
-  createdAt: Date;
-  startedAt?: Date;
-  completedAt?: Date;
-  createdBy: string;
-}
-
-export interface ExportFormatOptions {
-  paperSize?: 'A4' | 'A3' | 'Letter' | 'Legal';
-  orientation?: 'portrait' | 'landscape';
-  margin?: {
-    top: number;
-    right: number;
-    bottom: number;
-    left: number;
-  };
-  quality?: number; // For PNG
-  scale?: number; // For PDF
-  includeFilters?: boolean;
-  includeTimestamp?: boolean;
-  customHeader?: string;
-  customFooter?: string;
-}
-
-// Request/Response types for API
-export interface CreateDashboardRequest {
-  name: string;
-  description?: string;
-  layout?: DashboardLayout;
-  tags?: string[];
-  isPublic?: boolean;
-}
-
-export interface UpdateDashboardRequest {
-  name?: string;
-  description?: string;
-  layout?: DashboardLayout;
-  tags?: string[];
-  isPublic?: boolean;
-}
-
-export interface CreateWidgetRequest {
-  dashboardId: string;
-  name: string;
-  type: WidgetType;
-  queryId: string;
-  config: WidgetConfig;
-  position: WidgetPosition;
-  drillThroughConfig?: DrillThroughConfig;
-  crossFilters?: CrossFilter[];
-  refreshInterval?: number;
-}
-
-export interface UpdateWidgetRequest {
-  name?: string;
-  config?: WidgetConfig;
-  position?: WidgetPosition;
-  drillThroughConfig?: DrillThroughConfig;
-  crossFilters?: CrossFilter[];
-  refreshInterval?: number;
-}
-
-export interface CreateQueryRequest {
-  name: string;
-  description?: string;
-  queryText: string;
-  queryType?: 'sql' | 'materialized_view';
-  materializedViewName?: string;
-  parameters?: QueryParameter[];
-  isTemplate?: boolean;
-}
-
-export interface DashboardQueryOptions {
-  includeWidgets?: boolean;
-  includeVersions?: boolean;
-  includeShares?: boolean;
-  status?: DashboardStatus;
-  tags?: string[];
-  createdBy?: string;
-  facilityId?: string;
-}
-
-export interface WidgetDataRequest {
-  widgetId: string;
-  parameters?: Record<string, any>;
-  forceRefresh?: boolean;
-  useCache?: boolean;
-}
-
-export interface ExportRequest {
-  dashboardId: string;
-  exportType: ExportType;
-  formatOptions?: ExportFormatOptions;
-  widgetIds?: string[]; // Export specific widgets only
-  filters?: Record<string, any>; // Apply filters before export
-}
-
 export interface SecurityContext {
   user: User;
   complianceFramework: 'hipaa' | 'gdpr' | 'soc2';
@@ -694,130 +387,196 @@ export interface SecurityContext {
   facilityScope?: string;
 }
 
-// Catalog types
-export interface ColumnStats {
-  null_count: number;
-  distinct_count: number;
-  min_value?: string | number;
-  max_value?: string | number;
-  avg_value?: number;
-  median_value?: number;
-  std_dev?: number;
-  sample_values?: (string | number)[];
-  data_type: string;
-  precision?: number;
-  scale?: number;
-}
-
-export enum PIIType {
-  EMAIL = 'email',
-  PHONE = 'phone',
-  SSN = 'ssn',
-  CREDIT_CARD = 'credit_card',
-  NAME = 'name',
-  ADDRESS = 'address',
-  DATE_OF_BIRTH = 'date_of_birth',
-  DRIVER_LICENSE = 'driver_license',
-  PASSPORT = 'passport',
-  HEALTH_ID = 'health_id',
-  MEDICAL_RECORD = 'medical_record',
-  UNKNOWN = 'unknown'
-}
-
-export interface PIIDetectionResult {
-  is_pii: boolean;
-  pii_type?: PIIType;
-  confidence: number;
-  pattern_matched?: string;
-}
-
-export interface Column {
+// Dashboard types
+export interface SavedView {
   id: string;
-  dataset_id: string;
-  column_name: string;
-  column_type: string;
+  userId: string;
+  name: string;
   description?: string;
-  is_nullable: boolean;
-  stats_json: ColumnStats;
-  is_pii: boolean;
-  pii_type?: PIIType;
-  pii_confidence?: number;
-  created_at: Date;
-  updated_at: Date;
+  dashboardType: DashboardType;
+  filters: DashboardFilters;
+  layout: DashboardLayout;
+  isPublic: boolean;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface Dataset {
+export enum DashboardType {
+  PIPELINE = 'pipeline',
+  REVENUE = 'revenue',
+  COMPLIANCE = 'compliance',
+  OUTREACH = 'outreach',
+  COMBINED = 'combined'
+}
+
+export interface DashboardFilters {
+  team?: string[];
+  rep?: string[];
+  startDate?: string;
+  endDate?: string;
+  pipeline?: string[];
+  facilityId?: string;
+  includePII?: boolean;
+  timeRange?: TimeRange;
+  customFilters?: Record<string, any>;
+}
+
+export interface TimeRange {
+  preset?: 'today' | 'yesterday' | 'last7days' | 'last30days' | 'last90days' | 'thismonth' | 'lastmonth' | 'thisyear' | 'custom';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface DashboardLayout {
+  widgets: Widget[];
+  grid: GridConfig;
+}
+
+export interface Widget {
   id: string;
-  organization_id: string;
-  connector_id: string;
-  name: string;
-  schema_name?: string;
-  table_name: string;
-  description?: string;
-  row_count: number;
-  stats_json: Record<string, any>;
-  freshness_sla_hours: number;
-  last_discovered_at?: Date;
-  last_profiled_at?: Date;
-  created_at: Date;
-  updated_at: Date;
-  created_by?: string;
-  columns?: Column[];
+  type: WidgetType;
+  title: string;
+  position: WidgetPosition;
+  config: WidgetConfig;
+  dataSource: string;
+  filters?: Partial<DashboardFilters>;
 }
 
-export interface ColumnLineage {
+export enum WidgetType {
+  KPI_CARD = 'kpi_card',
+  CHART = 'chart',
+  TABLE = 'table',
+  GAUGE = 'gauge',
+  PROGRESS = 'progress'
+}
+
+export interface WidgetPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface WidgetConfig {
+  chartType?: 'line' | 'bar' | 'pie' | 'area' | 'scatter';
+  metric?: string;
+  aggregation?: 'sum' | 'avg' | 'count' | 'max' | 'min';
+  groupBy?: string;
+  colors?: string[];
+  showLegend?: boolean;
+  showDataLabels?: boolean;
+}
+
+export interface GridConfig {
+  columns: number;
+  rowHeight: number;
+  margin: [number, number];
+  containerPadding: [number, number];
+}
+
+export interface DashboardFilter {
   id: string;
-  organization_id: string;
-  source_column_id: string;
-  target_column_id?: string;
-  source_table: string;
-  target_table: string;
-  lineage_type: 'upstream' | 'downstream' | 'sibling';
-  description?: string;
-  created_at: Date;
-  updated_at: Date;
+  userId: string;
+  viewId?: string;
+  filterName: string;
+  filterConfig: Record<string, any>;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface SchemaMetadata {
-  name: string;
-  tables: TableMetadata[];
-  createdAt: string;
+export interface DrilldownConfig {
+  id: string;
+  userId: string;
+  viewId?: string;
+  metricName: string;
+  drilldownPath: DrilldownStep[];
+  targetTable: string;
+  filters: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface TableMetadata {
-  name: string;
-  schema: string;
-  rowCount: number;
-  columns: ColumnMetadata[];
-  freshnessSLA?: number;
-  lastProfiledAt?: string;
+export interface DrilldownStep {
+  level: number;
+  dimension: string;
+  aggregation?: string;
+  filters?: Record<string, any>;
 }
 
-export interface ColumnMetadata {
-  name: string;
-  type: string;
-  nullable: boolean;
-  isPII: boolean;
-  piiType?: PIIType;
-  piiConfidence?: number;
-  stats?: ColumnStats;
+export interface ExportJob {
+  id: string;
+  userId: string;
+  queryConfig: Record<string, any>;
+  status: ExportStatus;
+  filePath?: string;
+  recordCount: number;
+  fileSize: number;
+  errorMessage?: string;
+  startedAt?: Date;
+  completedAt?: Date;
+  createdAt: Date;
+  expiresAt: Date;
 }
 
-export interface DiscoveryRequest {
-  connector_id: string;
-  schema_names?: string[];
-  table_patterns?: string[];
+export enum ExportStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
 }
 
-export interface ProfileRequest {
-  dataset_ids: string[];
-  include_pii_detection?: boolean;
+export interface DashboardQuery extends AnalyticsQuery {
+  viewId?: string;
+  dashboardType?: DashboardType;
+  team?: string[];
+  rep?: string[];
+  pipeline?: string[];
+  timeRange?: TimeRange;
+  includeDrilldowns?: boolean;
+  format?: 'json' | 'csv';
+  limit?: number;
+  offset?: number;
 }
 
-export interface FreshnessInfo {
-  table_name: string;
-  sla_hours: number;
-  last_updated: Date;
-  age_hours: number;
-  is_fresh: boolean;
+export interface DashboardResponse {
+  success: boolean;
+  data: any;
+  metadata: {
+    viewId?: string;
+    dashboardType: DashboardType;
+    filters: DashboardFilters;
+    timestamp: string;
+    recordCount?: number;
+    cached: boolean;
+    hasDrilldowns?: boolean;
+  };
+}
+
+export interface KafkaMessage {
+  topic: string;
+  key?: string;
+  value: any;
+  headers?: Record<string, string>;
+  timestamp?: number;
+}
+
+export interface CacheInvalidationMessage {
+  cacheKey: string;
+  reason: string;
+  triggeredBy: string;
+  timestamp: string;
+  affectedTables?: string[];
+}
+
+export interface ExportNotificationMessage {
+  jobId: string;
+  userId: string;
+  status: ExportStatus;
+  filePath?: string;
+  recordCount?: number;
+  errorMessage?: string;
+  timestamp: string;
 }

@@ -13,8 +13,8 @@ import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
 import { governanceService } from './services/governance.service';
 import { metricVersioningService } from './services/metric-versioning.service';
-import { widgetMaterializationService } from './services/widget-materialization.service';
-import { dashboardJobService } from './services/dashboard-job.service';
+import { kafkaService } from './services/kafka.service';
+import { exportService } from './services/export.service';
 import analyticsRoutes from './routes/analytics';
 import forecastRoutes from './routes/forecast';
 import insightsRoutes from './routes/insights';
@@ -71,7 +71,6 @@ app.get('/health', async (req, res) => {
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
 app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
-app.use(`/api/${apiVersion}/dashboard`, dashboardRoutes);
 
 // Serve static files for the forecast UI
 app.use('/js', express.static(path.join(__dirname, '../public/js')));
@@ -79,6 +78,7 @@ app.use('/forecast.html', express.static(path.join(__dirname, '../public/forecas
 app.use('/forecast', express.static(path.join(__dirname, '../public/forecast.html')));
 app.use(`/api/${apiVersion}/insights`, insightsRoutes);
 app.use(`/api/${apiVersion}/governance`, governanceRoutes);
+app.use(`/api/${apiVersion}/dashboard`, dashboardRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -111,6 +111,24 @@ async function startServer(): Promise<void> {
     await governanceService.initializeTables();
     await metricVersioningService.initializeTable();
 
+    // Initialize Kafka service
+    try {
+      await kafkaService.connect();
+      await kafkaService.subscribeToCacheInvalidation();
+      console.log('📡 Kafka service initialized successfully');
+    } catch (error) {
+      console.warn('⚠️ Kafka service initialization failed, continuing without cache invalidation:', error);
+    }
+
+    // Start cleanup job for expired exports
+    setInterval(async () => {
+      try {
+        await exportService.cleanupExpiredExports();
+      } catch (error) {
+        console.error('Error cleaning up expired exports:', error);
+      }
+    }, 60 * 60 * 1000); // Run every hour
+
     // Test Redis connection
     const redisHealthy = await redis.healthCheck();
     if (!redisHealthy) {
@@ -136,6 +154,9 @@ async function startServer(): Promise<void> {
         try {
           await queueService.close();
           console.log('📋 Queue service closed');
+          
+          await kafkaService.disconnect();
+          console.log('📡 Kafka connection closed');
           
           await redis.close();
           console.log('🔴 Redis connection closed');

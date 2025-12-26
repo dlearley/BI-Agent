@@ -1,909 +1,713 @@
 import { db } from '../config/database';
 import { redis } from '../config/redis';
+import { kafkaService } from './kafka.service';
 import { 
-  Dashboard, 
-  Widget, 
-  WidgetQuery, 
-  WidgetDataCache,
-  DashboardVersion,
-  DashboardShare,
+  SavedView, 
+  DashboardType, 
+  DashboardFilters, 
+  DashboardLayout,
+  DashboardQuery,
+  DashboardResponse,
+  DrilldownConfig,
   ExportJob,
-  CreateDashboardRequest,
-  UpdateDashboardRequest,
-  CreateWidgetRequest,
-  UpdateWidgetRequest,
-  CreateQueryRequest,
-  DashboardQueryOptions,
-  WidgetDataRequest,
-  ExportRequest,
-  DashboardStatus,
-  WidgetType,
-  ExportType,
   ExportStatus,
   User,
-  WidgetPosition,
-  DashboardLayout,
-  WidgetConfig,
-  DrillThroughConfig,
-  CrossFilter,
-  QueryParameter,
-  ExportFormatOptions
+  TimeRange
 } from '../types';
-import { v4 as uuidv4 } from 'uuid';
-import crypto from 'crypto';
+import config from '../config';
+import { applyRowLevelSecurity, applyColumnLevelSecurity } from '../middleware/rbac';
 
 export class DashboardService {
-  // Dashboard CRUD operations
-  async createDashboard(request: CreateDashboardRequest, user: User): Promise<Dashboard> {
-    const id = uuidv4();
+  private readonly cachePrefix = 'dashboard:';
+  private readonly defaultCacheTTL = config.analytics.cacheTTL;
+
+  private generateCacheKey(type: string, query: DashboardQuery, user: User): string {
+    const key = `${this.cachePrefix}${type}:${user.id}:${JSON.stringify(query)}`;
+    return key.replace(/[^a-zA-Z0-9:_-]/g, '_');
+  }
+
+  private resolveTimeRange(timeRange?: TimeRange): { startDate?: string; endDate?: string } {
+    if (!timeRange) return {};
+
     const now = new Date();
     
-    const defaultLayout: DashboardLayout = {
-      grid: { cols: 12, rows: 20, gap: 1 },
-      widgets: []
-    };
-
-    const sql = `
-      INSERT INTO dashboards (
-        id, name, description, layout, version, status, 
-        created_by, created_at, updated_at, tags, is_public, facility_id
-      ) VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `;
-
-    const values = [
-      id,
-      request.name,
-      request.description || null,
-      JSON.stringify(request.layout || defaultLayout),
-      DashboardStatus.DRAFT,
-      user.id,
-      now,
-      now,
-      JSON.stringify(request.tags || []),
-      request.isPublic || false,
-      user.facilityId || null
-    ];
-
-    const result = await db.query(sql, values);
-    return this.mapRowToDashboard(result[0]);
-  }
-
-  async getDashboard(id: string, user: User, options: DashboardQueryOptions = {}): Promise<Dashboard | null> {
-    // Check permissions first
-    const hasAccess = await this.checkDashboardAccess(id, user);
-    if (!hasAccess) {
-      return null;
-    }
-
-    const sql = `
-      SELECT * FROM dashboards 
-      WHERE id = $1 AND ($2::text IS NULL OR facility_id = $2 OR is_public = true)
-    `;
-
-    const result = await db.query(sql, [id, user.facilityId]);
-    
-    if (result.length === 0) {
-      return null;
-    }
-
-    const dashboard = this.mapRowToDashboard(result[0]);
-
-    // Include related data if requested
-    if (options.includeWidgets) {
-      dashboard.widgets = await this.getDashboardWidgets(id);
-    }
-
-    if (options.includeVersions) {
-      dashboard.versions = await this.getDashboardVersions(id);
-    }
-
-    if (options.includeShares) {
-      dashboard.shares = await this.getDashboardShares(id);
-    }
-
-    return dashboard;
-  }
-
-  async getDashboards(user: User, options: DashboardQueryOptions = {}): Promise<Dashboard[]> {
-    let whereClause = 'WHERE ($1::text IS NULL OR facility_id = $1 OR is_public = true)';
-    const values: any[] = [user.facilityId];
-    let paramIndex = 2;
-
-    if (options.status) {
-      whereClause += ` AND status = $${paramIndex++}`;
-      values.push(options.status);
-    }
-
-    if (options.createdBy) {
-      whereClause += ` AND created_by = $${paramIndex++}`;
-      values.push(options.createdBy);
-    }
-
-    if (options.tags && options.tags.length > 0) {
-      whereClause += ` AND tags && $${paramIndex++}`;
-      values.push(options.tags);
-    }
-
-    const sql = `
-      SELECT * FROM dashboards 
-      ${whereClause}
-      ORDER BY updated_at DESC
-    `;
-
-    const result = await db.query(sql, values);
-    
-    const dashboards = result.map(row => this.mapRowToDashboard(row));
-
-    // Include related data if requested
-    if (options.includeWidgets) {
-      for (const dashboard of dashboards) {
-        dashboard.widgets = await this.getDashboardWidgets(dashboard.id);
+    if (timeRange.preset) {
+      switch (timeRange.preset) {
+        case 'today':
+          return {
+            startDate: now.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0],
+          };
+        case 'yesterday':
+          const yesterday = new Date(now);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          return { startDate: yesterdayStr, endDate: yesterdayStr };
+        case 'last7days':
+          const weekAgo = new Date(now);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return {
+            startDate: weekAgo.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0],
+          };
+        case 'last30days':
+          const monthAgo = new Date(now);
+          monthAgo.setDate(monthAgo.getDate() - 30);
+          return {
+            startDate: monthAgo.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0],
+          };
+        case 'last90days':
+          const quarterAgo = new Date(now);
+          quarterAgo.setDate(quarterAgo.getDate() - 90);
+          return {
+            startDate: quarterAgo.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0],
+          };
+        case 'thismonth':
+          const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          return {
+            startDate: firstOfMonth.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0],
+          };
+        case 'lastmonth':
+          const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+          return {
+            startDate: firstOfLastMonth.toISOString().split('T')[0],
+            endDate: lastOfLastMonth.toISOString().split('T')[0],
+          };
+        case 'thisyear':
+          const firstOfYear = new Date(now.getFullYear(), 0, 1);
+          return {
+            startDate: firstOfYear.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0],
+          };
+        default:
+          return {
+            startDate: timeRange.startDate,
+            endDate: timeRange.endDate,
+          };
       }
     }
-
-    return dashboards;
-  }
-
-  async updateDashboard(id: string, request: UpdateDashboardRequest, user: User): Promise<Dashboard | null> {
-    // Check if user has permission to update
-    const hasAccess = await this.checkDashboardEditAccess(id, user);
-    if (!hasAccess) {
-      return null;
-    }
-
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (request.name !== undefined) {
-      updates.push(`name = $${paramIndex++}`);
-      values.push(request.name);
-    }
-
-    if (request.description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      values.push(request.description);
-    }
-
-    if (request.layout !== undefined) {
-      updates.push(`layout = $${paramIndex++}`);
-      values.push(JSON.stringify(request.layout));
-    }
-
-    if (request.tags !== undefined) {
-      updates.push(`tags = $${paramIndex++}`);
-      values.push(JSON.stringify(request.tags));
-    }
-
-    if (request.isPublic !== undefined) {
-      updates.push(`is_public = $${paramIndex++}`);
-      values.push(request.isPublic);
-    }
-
-    updates.push(`updated_at = CURRENT_TIMESTAMP`);
-
-    if (updates.length === 0) {
-      return this.getDashboard(id, user);
-    }
-
-    const sql = `
-      UPDATE dashboards 
-      SET ${updates.join(', ')}
-      WHERE id = $${paramIndex++}
-      RETURNING *
-    `;
-
-    values.push(id);
-
-    const result = await db.query(sql, values);
-    
-    if (result.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToDashboard(result[0]);
-  }
-
-  async deleteDashboard(id: string, user: User): Promise<boolean> {
-    // Check if user has permission to delete
-    const hasAccess = await this.checkDashboardEditAccess(id, user);
-    if (!hasAccess) {
-      return false;
-    }
-
-    const sql = 'DELETE FROM dashboards WHERE id = $1';
-    const result = await db.query(sql, [id]);
-    
-    return result.rowCount > 0;
-  }
-
-  async publishDashboard(id: string, user: User): Promise<Dashboard | null> {
-    const hasAccess = await this.checkDashboardEditAccess(id, user);
-    if (!hasAccess) {
-      return null;
-    }
-
-    // Create a version before publishing
-    await this.createDashboardVersion(id, user, 'Published version');
-
-    const sql = `
-      UPDATE dashboards 
-      SET status = $1, published_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
-    `;
-
-    const result = await db.query(sql, [DashboardStatus.PUBLISHED, id]);
-    
-    if (result.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToDashboard(result[0]);
-  }
-
-  // Widget CRUD operations
-  async createWidget(request: CreateWidgetRequest, user: User): Promise<Widget> {
-    const id = uuidv4();
-    const now = new Date();
-
-    const sql = `
-      INSERT INTO widgets (
-        id, dashboard_id, name, type, query_id, config, position,
-        drill_through_config, cross_filters, refresh_interval, created_at, updated_at, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      RETURNING *
-    `;
-
-    const values = [
-      id,
-      request.dashboardId,
-      request.name,
-      request.type,
-      request.queryId,
-      JSON.stringify(request.config),
-      JSON.stringify(request.position),
-      JSON.stringify(request.drillThroughConfig || {}),
-      JSON.stringify(request.crossFilters || []),
-      request.refreshInterval || 300,
-      now,
-      now,
-      user.id
-    ];
-
-    const result = await db.query(sql, values);
-    return this.mapRowToWidget(result[0]);
-  }
-
-  async getWidget(id: string, user: User): Promise<Widget | null> {
-    const sql = `
-      SELECT w.* FROM widgets w
-      JOIN dashboards d ON w.dashboard_id = d.id
-      WHERE w.id = $1 AND ($2::text IS NULL OR d.facility_id = $2 OR d.is_public = true)
-    `;
-
-    const result = await db.query(sql, [id, user.facilityId]);
-    
-    if (result.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToWidget(result[0]);
-  }
-
-  async updateWidget(id: string, request: UpdateWidgetRequest, user: User): Promise<Widget | null> {
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (request.name !== undefined) {
-      updates.push(`name = $${paramIndex++}`);
-      values.push(request.name);
-    }
-
-    if (request.config !== undefined) {
-      updates.push(`config = $${paramIndex++}`);
-      values.push(JSON.stringify(request.config));
-    }
-
-    if (request.position !== undefined) {
-      updates.push(`position = $${paramIndex++}`);
-      values.push(JSON.stringify(request.position));
-    }
-
-    if (request.drillThroughConfig !== undefined) {
-      updates.push(`drill_through_config = $${paramIndex++}`);
-      values.push(JSON.stringify(request.drillThroughConfig));
-    }
-
-    if (request.crossFilters !== undefined) {
-      updates.push(`cross_filters = $${paramIndex++}`);
-      values.push(JSON.stringify(request.crossFilters));
-    }
-
-    if (request.refreshInterval !== undefined) {
-      updates.push(`refresh_interval = $${paramIndex++}`);
-      values.push(request.refreshInterval);
-    }
-
-    updates.push(`updated_at = CURRENT_TIMESTAMP`);
-
-    if (updates.length === 0) {
-      return this.getWidget(id, user);
-    }
-
-    const sql = `
-      UPDATE widgets w
-      SET ${updates.join(', ')}
-      FROM dashboards d
-      WHERE w.id = $${paramIndex++} AND w.dashboard_id = d.id 
-        AND ($${paramIndex++}::text IS NULL OR d.facility_id = $${paramIndex++} OR d.is_public = true)
-      RETURNING w.*
-    `;
-
-    values.push(id, user.facilityId, user.facilityId);
-
-    const result = await db.query(sql, values);
-    
-    if (result.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToWidget(result[0]);
-  }
-
-  async deleteWidget(id: string, user: User): Promise<boolean> {
-    const sql = `
-      DELETE FROM widgets w
-      USING dashboards d
-      WHERE w.id = $1 AND w.dashboard_id = d.id 
-        AND ($2::text IS NULL OR d.facility_id = $2 OR d.is_public = true)
-    `;
-
-    const result = await db.query(sql, [id, user.facilityId]);
-    
-    return result.rowCount > 0;
-  }
-
-  // Query operations
-  async createQuery(request: CreateQueryRequest, user: User): Promise<WidgetQuery> {
-    const id = uuidv4();
-    const now = new Date();
-
-    const sql = `
-      INSERT INTO widget_queries (
-        id, name, description, query_text, query_type, materialized_view_name,
-        parameters, created_at, updated_at, created_by, is_template
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `;
-
-    const values = [
-      id,
-      request.name,
-      request.description || null,
-      request.queryText,
-      request.queryType || 'sql',
-      request.materializedViewName || null,
-      JSON.stringify(request.parameters || []),
-      now,
-      now,
-      user.id,
-      request.isTemplate || false
-    ];
-
-    const result = await db.query(sql, values);
-    return this.mapRowToQuery(result[0]);
-  }
-
-  async getQueries(user: User, includeTemplates: boolean = false): Promise<WidgetQuery[]> {
-    let whereClause = 'WHERE created_by = $1';
-    const values = [user.id];
-
-    if (includeTemplates) {
-      whereClause += ' OR is_template = true';
-    }
-
-    const sql = `
-      SELECT * FROM widget_queries 
-      ${whereClause}
-      ORDER BY updated_at DESC
-    `;
-
-    const result = await db.query(sql, values);
-    return result.map(row => this.mapRowToQuery(row));
-  }
-
-  async getQuery(id: string, user: User): Promise<WidgetQuery | null> {
-    const sql = `
-      SELECT * FROM widget_queries 
-      WHERE id = $1 AND (created_by = $2 OR is_template = true)
-    `;
-
-    const result = await db.query(sql, [id, user.id]);
-    
-    if (result.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToQuery(result[0]);
-  }
-
-  // Widget data operations
-  async getWidgetData(request: WidgetDataRequest, user: User): Promise<any> {
-    const widget = await this.getWidget(request.widgetId, user);
-    if (!widget) {
-      throw new Error('Widget not found or access denied');
-    }
-
-    const query = await this.getQuery(widget.queryId, user);
-    if (!query) {
-      throw new Error('Query not found or access denied');
-    }
-
-    // Generate cache key
-    const queryHash = this.generateQueryHash(query.queryText, request.parameters);
-    const cacheKey = `widget_data:${widget.id}:${queryHash}`;
-
-    // Try to get from cache if not forcing refresh
-    if (!request.forceRefresh && request.useCache !== false) {
-      const cachedData = await this.getCachedWidgetData(widget.id, queryHash);
-      if (cachedData && new Date(cachedData.expiresAt) > new Date()) {
-        return {
-          data: cachedData.data,
-          cached: true,
-          metadata: cachedData.metadata
-        };
-      }
-    }
-
-    // Execute query
-    const startTime = Date.now();
-    let data: any;
-
-    if (query.queryType === 'materialized_view' && query.materializedViewName) {
-      data = await this.executeMaterializedViewQuery(query.materializedViewName, request.parameters);
-    } else {
-      data = await this.executeSQLQuery(query.queryText, request.parameters);
-    }
-
-    const executionTime = Date.now() - startTime;
-
-    // Cache the result
-    await this.cacheWidgetData(widget.id, queryHash, data, {
-      executionTime,
-      rowCount: Array.isArray(data) ? data.length : 1
-    });
 
     return {
-      data,
-      cached: false,
-      metadata: {
-        executionTime,
-        rowCount: Array.isArray(data) ? data.length : 1,
-        lastUpdated: new Date()
-      }
+      startDate: timeRange.startDate,
+      endDate: timeRange.endDate,
     };
   }
 
-  // Dashboard sharing
-  async shareDashboard(
-    dashboardId: string, 
-    sharedWithUserId: string | null, 
-    sharedWithRole: string | null,
-    permissionLevel: 'view' | 'edit' | 'admin',
-    user: User
-  ): Promise<DashboardShare | null> {
-    const hasAccess = await this.checkDashboardEditAccess(dashboardId, user);
-    if (!hasAccess) {
-      return null;
-    }
-
-    const id = uuidv4();
-    const now = new Date();
-
-    const sql = `
-      INSERT INTO dashboard_shares (
-        id, dashboard_id, shared_with_user_id, shared_with_role, 
-        permission_level, shared_by, shared_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (dashboard_id, shared_with_user_id) 
-      DO UPDATE SET permission_level = EXCLUDED.permission_level, shared_at = EXCLUDED.shared_at
-      RETURNING *
-    `;
-
-    const values = [
-      id,
-      dashboardId,
-      sharedWithUserId,
-      sharedWithRole,
-      permissionLevel,
-      user.id,
-      now
-    ];
-
-    const result = await db.query(sql, values);
-    return this.mapRowToShare(result[0]);
-  }
-
-  async unshareDashboard(dashboardId: string, sharedWithUserId: string, user: User): Promise<boolean> {
-    const hasAccess = await this.checkDashboardEditAccess(dashboardId, user);
-    if (!hasAccess) {
-      return false;
-    }
-
-    const sql = 'DELETE FROM dashboard_shares WHERE dashboard_id = $1 AND shared_with_user_id = $2';
-    const result = await db.query(sql, [dashboardId, sharedWithUserId]);
+  async getDashboardData(query: DashboardQuery, user: User): Promise<DashboardResponse> {
+    const cacheKey = this.generateCacheKey('data', query, user);
     
-    return result.rowCount > 0;
-  }
-
-  // Export operations
-  async createExportJob(request: ExportRequest, user: User): Promise<ExportJob> {
-    const hasAccess = await this.checkDashboardAccess(request.dashboardId, user);
-    if (!hasAccess) {
-      throw new Error('Dashboard not found or access denied');
+    // Try cache first
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    const id = uuidv4();
-    const now = new Date();
+    try {
+      const timeRange = this.resolveTimeRange(query.timeRange);
+      const dashboardType = query.dashboardType || DashboardType.COMBINED;
+      
+      let data: any;
+      let recordCount = 0;
 
-    const sql = `
-      INSERT INTO export_jobs (
-        id, dashboard_id, export_type, format_options, status, created_at, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-    `;
+      switch (dashboardType) {
+        case DashboardType.PIPELINE:
+          data = await this.getPipelineDashboardData(query, user, timeRange);
+          recordCount = data.length;
+          break;
+        case DashboardType.REVENUE:
+          data = await this.getRevenueDashboardData(query, user, timeRange);
+          recordCount = data.length;
+          break;
+        case DashboardType.COMPLIANCE:
+          data = await this.getComplianceDashboardData(query, user, timeRange);
+          recordCount = data.length;
+          break;
+        case DashboardType.OUTREACH:
+          data = await this.getOutreachDashboardData(query, user, timeRange);
+          recordCount = data.length;
+          break;
+        case DashboardType.COMBINED:
+          data = await this.getCombinedDashboardData(query, user, timeRange);
+          recordCount = Array.isArray(data) ? data.length : Object.keys(data).length;
+          break;
+        default:
+          throw new Error(`Unsupported dashboard type: ${dashboardType}`);
+      }
 
-    const values = [
-      id,
-      request.dashboardId,
-      request.exportType,
-      JSON.stringify(request.formatOptions || {}),
-      ExportStatus.PENDING,
-      now,
-      user.id
-    ];
+      const response: DashboardResponse = {
+        success: true,
+        data,
+        metadata: {
+          viewId: query.viewId,
+          dashboardType,
+          filters: {
+            ...query,
+            ...timeRange,
+          },
+          timestamp: new Date().toISOString(),
+          recordCount,
+          cached: false,
+          hasDrilldowns: query.includeDrilldowns || false,
+        },
+      };
 
-    const result = await db.query(sql, values);
-    return this.mapRowToExportJob(result[0]);
-  }
+      // Cache the response
+      await redis.set(cacheKey, response, this.defaultCacheTTL);
 
-  async getExportJob(id: string, user: User): Promise<ExportJob | null> {
-    const sql = `
-      SELECT ej.* FROM export_jobs ej
-      JOIN dashboards d ON ej.dashboard_id = d.id
-      WHERE ej.id = $1 AND ($2::text IS NULL OR d.facility_id = $2 OR d.is_public = true)
-    `;
-
-    const result = await db.query(sql, [id, user.facilityId]);
-    
-    if (result.length === 0) {
-      return null;
+      return response;
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      throw error;
     }
-
-    return this.mapRowToExportJob(result[0]);
   }
 
-  async getExportJobsForDashboard(dashboardId: string, user: User): Promise<ExportJob[]> {
-    const hasAccess = await this.checkDashboardAccess(dashboardId, user);
-    if (!hasAccess) {
-      return [];
-    }
-
-    const sql = `
-      SELECT * FROM export_jobs 
-      WHERE dashboard_id = $1
-      ORDER BY created_at DESC
+  private async getPipelineDashboardData(query: DashboardQuery, user: User, timeRange: { startDate?: string; endDate?: string }): Promise<any> {
+    let sql = `
+      SELECT 
+        facility_id,
+        facility_name,
+        SUM(total_applications) as total_applications,
+        SUM(hired_count) as hired_count,
+        SUM(rejected_count) as rejected_count,
+        SUM(pending_count) as pending_count,
+        SUM(interview_count) as interview_count,
+        ROUND(AVG(avg_time_to_fill_days), 2) as avg_time_to_fill_days,
+        month
+      FROM analytics.pipeline_kpis_materialized
+      WHERE 1=1
     `;
 
-    const result = await db.query(sql, [dashboardId]);
-    return result.map(row => this.mapRowToExportJob(row));
-  }
-
-  // Private helper methods
-  private async checkDashboardAccess(dashboardId: string, user: User): Promise<boolean> {
-    // Check if user owns the dashboard or it's public or shared with them
-    const sql = `
-      SELECT 1 FROM dashboards d
-      WHERE d.id = $1 AND (
-        d.created_by = $2 OR 
-        d.is_public = true OR
-        ($3::text IS NULL OR d.facility_id = $3) OR
-        EXISTS (
-          SELECT 1 FROM dashboard_shares ds 
-          WHERE ds.dashboard_id = d.id AND ds.shared_with_user_id = $2
-        )
-      )
-    `;
-
-    const result = await db.query(sql, [dashboardId, user.id, user.facilityId]);
-    return result.length > 0;
-  }
-
-  private async checkDashboardEditAccess(dashboardId: string, user: User): Promise<boolean> {
-    // Check if user can edit the dashboard
-    const sql = `
-      SELECT 1 FROM dashboards d
-      WHERE d.id = $1 AND (
-        d.created_by = $2 OR
-        EXISTS (
-          SELECT 1 FROM dashboard_shares ds 
-          WHERE ds.dashboard_id = d.id AND ds.shared_with_user_id = $2
-          AND ds.permission_level IN ('edit', 'admin')
-        )
-      )
-    `;
-
-    const result = await db.query(sql, [dashboardId, user.id]);
-    return result.length > 0;
-  }
-
-  private async getDashboardWidgets(dashboardId: string): Promise<Widget[]> {
-    const sql = 'SELECT * FROM widgets WHERE dashboard_id = $1 ORDER BY created_at';
-    const result = await db.query(sql, [dashboardId]);
-    return result.map(row => this.mapRowToWidget(row));
-  }
-
-  private async getDashboardVersions(dashboardId: string): Promise<DashboardVersion[]> {
-    const sql = 'SELECT * FROM dashboard_versions WHERE dashboard_id = $1 ORDER BY version DESC';
-    const result = await db.query(sql, [dashboardId]);
-    return result.map(row => this.mapRowToVersion(row));
-  }
-
-  private async getDashboardShares(dashboardId: string): Promise<DashboardShare[]> {
-    const sql = 'SELECT * FROM dashboard_shares WHERE dashboard_id = $1 ORDER BY shared_at DESC';
-    const result = await db.query(sql, [dashboardId]);
-    return result.map(row => this.mapRowToShare(row));
-  }
-
-  private async createDashboardVersion(dashboardId: string, user: User, changeDescription?: string): Promise<DashboardVersion> {
-    // Get current dashboard and widgets
-    const dashboard = await this.getDashboard(dashboardId, user, { includeWidgets: true });
-    if (!dashboard) {
-      throw new Error('Dashboard not found');
-    }
-
-    // Get next version number
-    const versionSql = 'SELECT COALESCE(MAX(version), 0) + 1 as next_version FROM dashboard_versions WHERE dashboard_id = $1';
-    const versionResult = await db.query(versionSql, [dashboardId]);
-    const nextVersion = versionResult[0].next_version;
-
-    const id = uuidv4();
-    const now = new Date();
-
-    const sql = `
-      INSERT INTO dashboard_versions (
-        id, dashboard_id, version, name, description, layout, widgets_snapshot,
-        created_at, created_by, change_description, is_published
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `;
-
-    const values = [
-      id,
-      dashboardId,
-      nextVersion,
-      `Version ${nextVersion}`,
-      dashboard.description,
-      JSON.stringify(dashboard.layout),
-      JSON.stringify(dashboard.widgets || []),
-      now,
-      user.id,
-      changeDescription,
-      false
-    ];
-
-    const result = await db.query(sql, values);
-    return this.mapRowToVersion(result[0]);
-  }
-
-  private generateQueryHash(queryText: string, parameters: Record<string, any> = {}): string {
-    const hashInput = `${queryText}:${JSON.stringify(parameters, Object.keys(parameters).sort())}`;
-    return crypto.createHash('sha256').update(hashInput).digest('hex');
-  }
-
-  private async getCachedWidgetData(widgetId: string, queryHash: string): Promise<WidgetDataCache | null> {
-    const sql = `
-      SELECT * FROM widget_data_cache 
-      WHERE widget_id = $1 AND query_hash = $2 AND expires_at > CURRENT_TIMESTAMP
-    `;
-
-    const result = await db.query(sql, [widgetId, queryHash]);
-    
-    if (result.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToCache(result[0]);
-  }
-
-  private async cacheWidgetData(
-    widgetId: string, 
-    queryHash: string, 
-    data: any, 
-    metadata: any
-  ): Promise<void> {
-    const id = uuidv4();
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes cache
-
-    const sql = `
-      INSERT INTO widget_data_cache (
-        id, widget_id, query_hash, data, metadata, created_at, expires_at, last_refreshed_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      ON CONFLICT (widget_id, query_hash) 
-      DO UPDATE SET 
-        data = EXCLUDED.data,
-        metadata = EXCLUDED.metadata,
-        expires_at = EXCLUDED.expires_at,
-        refresh_count = widget_data_cache.refresh_count + 1,
-        last_refreshed_at = EXCLUDED.last_refreshed_at
-    `;
-
-    const values = [
-      id,
-      widgetId,
-      queryHash,
-      JSON.stringify(data),
-      JSON.stringify(metadata),
-      now,
-      expiresAt,
-      now
-    ];
-
-    await db.query(sql, values);
-  }
-
-  private async executeSQLQuery(queryText: string, parameters: Record<string, any> = {}): Promise<any> {
-    // Simple parameter substitution (in production, use a proper query builder)
-    let query = queryText;
-    const values: any[] = [];
+    const params: any[] = [];
     let paramIndex = 1;
 
-    for (const [key, value] of Object.entries(parameters)) {
-      query = query.replace(new RegExp(`:${key}`, 'g'), `$${paramIndex++}`);
-      values.push(value);
+    if (timeRange.startDate) {
+      sql += ` AND month >= $${paramIndex++}`;
+      params.push(timeRange.startDate);
     }
 
-    const result = await db.query(query, values);
+    if (timeRange.endDate) {
+      sql += ` AND month <= $${paramIndex++}`;
+      params.push(timeRange.endDate);
+    }
+
+    if (query.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(query.facilityId);
+    }
+
+    // Apply row-level security
+    if (user.role !== 'admin' && user.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(user.facilityId);
+    }
+
+    sql += ` GROUP BY facility_id, facility_name, month ORDER BY month DESC, facility_id`;
+
+    const result = await db.query(sql, params);
     return result;
   }
 
-  private async executeMaterializedViewQuery(viewName: string, parameters: Record<string, any> = {}): Promise<any> {
-    let query = `SELECT * FROM ${viewName}`;
-    const whereConditions: string[] = [];
-    const values: any[] = [];
+  private async getRevenueDashboardData(query: DashboardQuery, user: User, timeRange: { startDate?: string; endDate?: string }): Promise<any> {
+    let sql = `
+      SELECT 
+        facility_id,
+        facility_name,
+        SUM(total_revenue) as total_revenue,
+        ROUND(AVG(avg_revenue_per_invoice), 2) as avg_revenue_per_invoice,
+        month
+      FROM analytics.revenue_kpis_materialized
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
     let paramIndex = 1;
 
-    for (const [key, value] of Object.entries(parameters)) {
-      if (value !== undefined && value !== null) {
-        whereConditions.push(`${key} = $${paramIndex++}`);
-        values.push(value);
-      }
+    if (timeRange.startDate) {
+      sql += ` AND month >= $${paramIndex++}`;
+      params.push(timeRange.startDate);
     }
 
-    if (whereConditions.length > 0) {
-      query += ` WHERE ${whereConditions.join(' AND ')}`;
+    if (timeRange.endDate) {
+      sql += ` AND month <= $${paramIndex++}`;
+      params.push(timeRange.endDate);
     }
 
-    const result = await db.query(query, values);
+    if (query.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(query.facilityId);
+    }
+
+    // Apply row-level security
+    if (user.role !== 'admin' && user.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(user.facilityId);
+    }
+
+    sql += ` GROUP BY facility_id, facility_name, month ORDER BY month DESC, facility_id`;
+
+    const result = await db.query(sql, params);
     return result;
   }
 
-  // Mapping methods
-  private mapRowToDashboard(row: any): Dashboard {
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      layout: JSON.parse(row.layout),
-      version: row.version,
-      status: row.status,
-      createdBy: row.created_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      publishedAt: row.published_at,
-      tags: JSON.parse(row.tags),
-      isPublic: row.is_public,
-      facilityId: row.facility_id
-    };
+  private async getComplianceDashboardData(query: DashboardQuery, user: User, timeRange: { startDate?: string; endDate?: string }): Promise<any> {
+    let sql = `
+      SELECT 
+        facility_id,
+        facility_name,
+        SUM(total_applications) as total_applications,
+        SUM(compliant_applications) as compliant_applications,
+        ROUND(AVG(compliance_rate), 2) as compliance_rate,
+        SUM(violation_count) as violation_count,
+        month
+      FROM analytics.compliance_kpis_materialized
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (timeRange.startDate) {
+      sql += ` AND month >= $${paramIndex++}`;
+      params.push(timeRange.startDate);
+    }
+
+    if (timeRange.endDate) {
+      sql += ` AND month <= $${paramIndex++}`;
+      params.push(timeRange.endDate);
+    }
+
+    if (query.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(query.facilityId);
+    }
+
+    // Apply row-level security
+    if (user.role !== 'admin' && user.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(user.facilityId);
+    }
+
+    sql += ` GROUP BY facility_id, facility_name, month ORDER BY month DESC, facility_id`;
+
+    const result = await db.query(sql, params);
+    return result;
   }
 
-  private mapRowToWidget(row: any): Widget {
-    return {
-      id: row.id,
-      dashboardId: row.dashboard_id,
-      name: row.name,
-      type: row.type,
-      queryId: row.query_id,
-      config: JSON.parse(row.config),
-      position: JSON.parse(row.position),
-      drillThroughConfig: JSON.parse(row.drill_through_config),
-      crossFilters: JSON.parse(row.cross_filters),
-      refreshInterval: row.refresh_interval,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      createdBy: row.created_by
-    };
+  private async getOutreachDashboardData(query: DashboardQuery, user: User, timeRange: { startDate?: string; endDate?: string }): Promise<any> {
+    let sql = `
+      SELECT 
+        facility_id,
+        facility_name,
+        SUM(total_outreach) as total_outreach,
+        ROUND(AVG(response_rate), 2) as avg_response_rate,
+        ROUND(AVG(conversion_rate), 2) as avg_conversion_rate,
+        month
+      FROM analytics.outreach_kpis_materialized
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (timeRange.startDate) {
+      sql += ` AND month >= $${paramIndex++}`;
+      params.push(timeRange.startDate);
+    }
+
+    if (timeRange.endDate) {
+      sql += ` AND month <= $${paramIndex++}`;
+      params.push(timeRange.endDate);
+    }
+
+    if (query.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(query.facilityId);
+    }
+
+    // Apply row-level security
+    if (user.role !== 'admin' && user.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(user.facilityId);
+    }
+
+    sql += ` GROUP BY facility_id, facility_name, month ORDER BY month DESC, facility_id`;
+
+    const result = await db.query(sql, params);
+    return result;
   }
 
-  private mapRowToQuery(row: any): WidgetQuery {
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      queryText: row.query_text,
-      queryType: row.query_type,
-      materializedViewName: row.materialized_view_name,
-      parameters: JSON.parse(row.parameters),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      createdBy: row.created_by,
-      isTemplate: row.is_template
-    };
+  private async getCombinedDashboardData(query: DashboardQuery, user: User, timeRange: { startDate?: string; endDate?: string }): Promise<any> {
+    let sql = `
+      SELECT 
+        facility_id,
+        facility_name,
+        SUM(total_applications) as total_applications,
+        SUM(hired_count) as hired_count,
+        ROUND(AVG(avg_time_to_fill_days), 2) as avg_time_to_fill_days,
+        SUM(compliant_applications) as compliant_applications,
+        ROUND(AVG(compliance_rate), 2) as compliance_rate,
+        SUM(violation_count) as violation_count,
+        SUM(total_revenue) as total_revenue,
+        ROUND(AVG(avg_revenue_per_invoice), 2) as avg_revenue_per_invoice,
+        SUM(total_outreach) as total_outreach,
+        ROUND(AVG(avg_response_rate), 2) as avg_response_rate,
+        ROUND(AVG(avg_conversion_rate), 2) as avg_conversion_rate,
+        month
+      FROM analytics.combined_kpis
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (timeRange.startDate) {
+      sql += ` AND month >= $${paramIndex++}`;
+      params.push(timeRange.startDate);
+    }
+
+    if (timeRange.endDate) {
+      sql += ` AND month <= $${paramIndex++}`;
+      params.push(timeRange.endDate);
+    }
+
+    if (query.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(query.facilityId);
+    }
+
+    // Apply row-level security
+    if (user.role !== 'admin' && user.facilityId) {
+      sql += ` AND facility_id = $${paramIndex++}`;
+      params.push(user.facilityId);
+    }
+
+    sql += ` GROUP BY facility_id, facility_name, month ORDER BY month DESC, facility_id`;
+
+    const result = await db.query(sql, params);
+    return result;
   }
 
-  private mapRowToCache(row: any): WidgetDataCache {
-    return {
-      id: row.id,
-      widgetId: row.widget_id,
-      queryHash: row.query_hash,
-      data: JSON.parse(row.data),
-      metadata: JSON.parse(row.metadata),
-      createdAt: row.created_at,
-      expiresAt: row.expires_at,
-      refreshCount: row.refresh_count,
-      lastRefreshedAt: row.last_refreshed_at
-    };
+  async createSavedView(savedView: Omit<SavedView, 'id' | 'createdAt' | 'updatedAt'>, user: User): Promise<SavedView> {
+    try {
+      const query = `
+        INSERT INTO saved_views (user_id, name, description, dashboard_type, filters, layout, is_public, is_default)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `;
+
+      const result = await db.query(query, [
+        user.id,
+        savedView.name,
+        savedView.description,
+        savedView.dashboardType,
+        JSON.stringify(savedView.filters),
+        JSON.stringify(savedView.layout),
+        savedView.isPublic,
+        savedView.isDefault,
+      ]);
+
+      const createdView = result[0];
+
+      // Invalidate cache for this user's dashboard views
+      await kafkaService.invalidateCacheByPattern(
+        `${this.cachePrefix}views:${user.id}:*`,
+        'Saved view created',
+        user.id
+      );
+
+      return createdView;
+    } catch (error) {
+      console.error('Error creating saved view:', error);
+      throw error;
+    }
   }
 
-  private mapRowToVersion(row: any): DashboardVersion {
-    return {
-      id: row.id,
-      dashboardId: row.dashboard_id,
-      version: row.version,
-      name: row.name,
-      description: row.description,
-      layout: JSON.parse(row.layout),
-      widgetsSnapshot: JSON.parse(row.widgets_snapshot),
-      createdAt: row.created_at,
-      createdBy: row.created_by,
-      changeDescription: row.change_description,
-      isPublished: row.is_published
-    };
+  async getSavedViews(user: User, dashboardType?: DashboardType): Promise<SavedView[]> {
+    try {
+      let sql = `
+        SELECT * FROM saved_views 
+        WHERE user_id = $1 OR is_public = true
+      `;
+      const params = [user.id];
+
+      if (dashboardType) {
+        sql += ` AND dashboard_type = $2`;
+        params.push(dashboardType);
+      }
+
+      sql += ` ORDER BY is_default DESC, created_at DESC`;
+
+      const result = await db.query(sql, params);
+      return result;
+    } catch (error) {
+      console.error('Error fetching saved views:', error);
+      throw error;
+    }
   }
 
-  private mapRowToShare(row: any): DashboardShare {
-    return {
-      id: row.id,
-      dashboardId: row.dashboard_id,
-      sharedWithUserId: row.shared_with_user_id,
-      sharedWithRole: row.shared_with_role,
-      permissionLevel: row.permission_level,
-      sharedBy: row.shared_by,
-      sharedAt: row.shared_at,
-      expiresAt: row.expires_at
-    };
+  async updateSavedView(id: string, updates: Partial<SavedView>, user: User): Promise<SavedView> {
+    try {
+      const fields = [];
+      const values = [];
+      let paramIndex = 1;
+
+      if (updates.name !== undefined) {
+        fields.push(`name = $${paramIndex++}`);
+        values.push(updates.name);
+      }
+      if (updates.description !== undefined) {
+        fields.push(`description = $${paramIndex++}`);
+        values.push(updates.description);
+      }
+      if (updates.filters !== undefined) {
+        fields.push(`filters = $${paramIndex++}`);
+        values.push(JSON.stringify(updates.filters));
+      }
+      if (updates.layout !== undefined) {
+        fields.push(`layout = $${paramIndex++}`);
+        values.push(JSON.stringify(updates.layout));
+      }
+      if (updates.isPublic !== undefined) {
+        fields.push(`is_public = $${paramIndex++}`);
+        values.push(updates.isPublic);
+      }
+      if (updates.isDefault !== undefined) {
+        fields.push(`is_default = $${paramIndex++}`);
+        values.push(updates.isDefault);
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      values.push(id, user.id);
+
+      const query = `
+        UPDATE saved_views 
+        SET ${fields.join(', ')}
+        WHERE id = $${paramIndex++} AND user_id = $${paramIndex++}
+        RETURNING *
+      `;
+
+      const result = await db.query(query, values);
+      
+      if (result.length === 0) {
+        throw new Error('Saved view not found or access denied');
+      }
+
+      // Invalidate cache
+      await kafkaService.invalidateCacheByPattern(
+        `${this.cachePrefix}views:${user.id}:*`,
+        'Saved view updated',
+        user.id
+      );
+
+      return result[0];
+    } catch (error) {
+      console.error('Error updating saved view:', error);
+      throw error;
+    }
   }
 
-  private mapRowToExportJob(row: any): ExportJob {
-    return {
-      id: row.id,
-      dashboardId: row.dashboard_id,
-      exportType: row.export_type,
-      formatOptions: JSON.parse(row.format_options),
-      status: row.status,
-      filePath: row.file_path,
-      fileSize: row.file_size,
-      errorMessage: row.error_message,
-      createdAt: row.created_at,
-      startedAt: row.started_at,
-      completedAt: row.completed_at,
-      createdBy: row.created_by
-    };
+  async deleteSavedView(id: string, user: User): Promise<void> {
+    try {
+      const query = `
+        DELETE FROM saved_views 
+        WHERE id = $1 AND user_id = $2
+      `;
+
+      await db.query(query, [id, user.id]);
+
+      // Invalidate cache
+      await kafkaService.invalidateCacheByPattern(
+        `${this.cachePrefix}views:${user.id}:*`,
+        'Saved view deleted',
+        user.id
+      );
+    } catch (error) {
+      console.error('Error deleting saved view:', error);
+      throw error;
+    }
+  }
+
+  async createDrilldownConfig(drilldownConfig: Omit<DrilldownConfig, 'id' | 'createdAt' | 'updatedAt'>, user: User): Promise<DrilldownConfig> {
+    try {
+      const query = `
+        INSERT INTO drilldown_configs (user_id, view_id, metric_name, drilldown_path, target_table, filters)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `;
+
+      const result = await db.query(query, [
+        user.id,
+        drilldownConfig.viewId,
+        drilldownConfig.metricName,
+        JSON.stringify(drilldownConfig.drilldownPath),
+        drilldownConfig.targetTable,
+        JSON.stringify(drilldownConfig.filters),
+      ]);
+
+      return result[0];
+    } catch (error) {
+      console.error('Error creating drilldown config:', error);
+      throw error;
+    }
+  }
+
+  async getDrilldownConfigs(user: User, viewId?: string): Promise<DrilldownConfig[]> {
+    try {
+      let sql = `SELECT * FROM drilldown_configs WHERE user_id = $1`;
+      const params = [user.id];
+
+      if (viewId) {
+        sql += ` AND view_id = $2`;
+        params.push(viewId);
+      }
+
+      sql += ` ORDER BY created_at DESC`;
+
+      const result = await db.query(sql, params);
+      return result;
+    } catch (error) {
+      console.error('Error fetching drilldown configs:', error);
+      throw error;
+    }
+  }
+
+  async createExportJob(queryConfig: Record<string, any>, user: User): Promise<ExportJob> {
+    try {
+      const query = `
+        INSERT INTO export_jobs (user_id, query_config, status)
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `;
+
+      const result = await db.query(query, [
+        user.id,
+        JSON.stringify(queryConfig),
+        ExportStatus.PENDING,
+      ]);
+
+      return result[0];
+    } catch (error) {
+      console.error('Error creating export job:', error);
+      throw error;
+    }
+  }
+
+  async getExportJob(jobId: string, user: User): Promise<ExportJob | null> {
+    try {
+      const query = `
+        SELECT * FROM export_jobs 
+        WHERE id = $1 AND user_id = $2
+      `;
+
+      const result = await db.query(query, [jobId, user.id]);
+      return result.length > 0 ? result[0] : null;
+    } catch (error) {
+      console.error('Error fetching export job:', error);
+      throw error;
+    }
+  }
+
+  async getExportJobs(user: User, status?: ExportStatus): Promise<ExportJob[]> {
+    try {
+      let sql = `SELECT * FROM export_jobs WHERE user_id = $1`;
+      const params = [user.id];
+
+      if (status) {
+        sql += ` AND status = $2`;
+        params.push(status);
+      }
+
+      sql += ` ORDER BY created_at DESC`;
+
+      const result = await db.query(sql, params);
+      return result;
+    } catch (error) {
+      console.error('Error fetching export jobs:', error);
+      throw error;
+    }
+  }
+
+  async updateExportJob(jobId: string, updates: Partial<ExportJob>, user: User): Promise<ExportJob> {
+    try {
+      const fields = [];
+      const values = [];
+      let paramIndex = 1;
+
+      if (updates.status !== undefined) {
+        fields.push(`status = $${paramIndex++}`);
+        values.push(updates.status);
+      }
+      if (updates.filePath !== undefined) {
+        fields.push(`file_path = $${paramIndex++}`);
+        values.push(updates.filePath);
+      }
+      if (updates.recordCount !== undefined) {
+        fields.push(`record_count = $${paramIndex++}`);
+        values.push(updates.recordCount);
+      }
+      if (updates.fileSize !== undefined) {
+        fields.push(`file_size = $${paramIndex++}`);
+        values.push(updates.fileSize);
+      }
+      if (updates.errorMessage !== undefined) {
+        fields.push(`error_message = $${paramIndex++}`);
+        values.push(updates.errorMessage);
+      }
+      if (updates.startedAt !== undefined) {
+        fields.push(`started_at = $${paramIndex++}`);
+        values.push(updates.startedAt);
+      }
+      if (updates.completedAt !== undefined) {
+        fields.push(`completed_at = $${paramIndex++}`);
+        values.push(updates.completedAt);
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      values.push(jobId, user.id);
+
+      const query = `
+        UPDATE export_jobs 
+        SET ${fields.join(', ')}
+        WHERE id = $${paramIndex++} AND user_id = $${paramIndex++}
+        RETURNING *
+      `;
+
+      const result = await db.query(query, values);
+      
+      if (result.length === 0) {
+        throw new Error('Export job not found or access denied');
+      }
+
+      // Publish notification if status changed
+      if (updates.status) {
+        await kafkaService.publishExportNotification({
+          jobId,
+          userId: user.id,
+          status: updates.status,
+          filePath: result[0].filePath,
+          recordCount: result[0].recordCount,
+          errorMessage: result[0].errorMessage,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return result[0];
+    } catch (error) {
+      console.error('Error updating export job:', error);
+      throw error;
+    }
   }
 }
 
 export const dashboardService = new DashboardService();
+export default dashboardService;

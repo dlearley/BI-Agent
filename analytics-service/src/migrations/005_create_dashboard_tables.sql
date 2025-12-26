@@ -1,141 +1,104 @@
--- Dashboard tables for the analytics platform
-
--- Dashboards table
-CREATE TABLE IF NOT EXISTS dashboards (
+-- Create saved views table for dashboard functionality
+CREATE TABLE IF NOT EXISTS saved_views (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    dashboard_type VARCHAR(50) NOT NULL CHECK (dashboard_type IN ('pipeline', 'revenue', 'compliance', 'outreach', 'combined')),
+    filters JSONB NOT NULL DEFAULT '{}',
     layout JSONB NOT NULL DEFAULT '{}',
-    version INTEGER NOT NULL DEFAULT 1,
-    status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-    created_by UUID NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    published_at TIMESTAMP WITH TIME ZONE,
-    tags TEXT[] DEFAULT '{}',
     is_public BOOLEAN DEFAULT FALSE,
-    facility_id UUID -- For multi-tenant support
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, name)
 );
 
--- Widgets table
-CREATE TABLE IF NOT EXISTS widgets (
+-- Create dashboard filters table for persistent filter configurations
+CREATE TABLE IF NOT EXISTS dashboard_filters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dashboard_id UUID NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('kpi', 'line', 'area', 'bar', 'table', 'heatmap', 'map')),
-    query_id UUID NOT NULL,
-    config JSONB NOT NULL DEFAULT '{}',
-    position JSONB NOT NULL DEFAULT '{}',
-    drill_through_config JSONB DEFAULT '{}',
-    cross_filters JSONB DEFAULT '{}',
-    refresh_interval INTEGER DEFAULT 300, -- seconds
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID NOT NULL
+    user_id VARCHAR(255) NOT NULL,
+    view_id UUID REFERENCES saved_views(id) ON DELETE CASCADE,
+    filter_name VARCHAR(255) NOT NULL,
+    filter_config JSONB NOT NULL DEFAULT '{}',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, view_id, filter_name)
 );
 
--- Widget queries table
-CREATE TABLE IF NOT EXISTS widget_queries (
+-- Create drilldown configurations table
+CREATE TABLE IF NOT EXISTS drilldown_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    query_text TEXT NOT NULL,
-    query_type VARCHAR(50) NOT NULL DEFAULT 'sql' CHECK (query_type IN ('sql', 'materialized_view')),
-    materialized_view_name VARCHAR(255),
-    parameters JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID NOT NULL,
-    is_template BOOLEAN DEFAULT FALSE
+    user_id VARCHAR(255) NOT NULL,
+    view_id UUID REFERENCES saved_views(id) ON DELETE CASCADE,
+    metric_name VARCHAR(255) NOT NULL,
+    drilldown_path JSONB NOT NULL DEFAULT '[]',
+    target_table VARCHAR(255) NOT NULL,
+    filters JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, view_id, metric_name)
 );
 
--- Materialized widget data cache
-CREATE TABLE IF NOT EXISTS widget_data_cache (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    widget_id UUID NOT NULL REFERENCES widgets(id) ON DELETE CASCADE,
-    query_hash VARCHAR(64) NOT NULL, -- SHA256 hash of the query with parameters
-    data JSONB NOT NULL,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    refresh_count INTEGER DEFAULT 0,
-    last_refreshed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Dashboard versions for versioning
-CREATE TABLE IF NOT EXISTS dashboard_versions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dashboard_id UUID NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
-    version INTEGER NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    layout JSONB NOT NULL,
-    widgets_snapshot JSONB NOT NULL, -- Snapshot of widgets at this version
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID NOT NULL,
-    change_description TEXT,
-    is_published BOOLEAN DEFAULT FALSE,
-    UNIQUE(dashboard_id, version)
-);
-
--- Dashboard sharing
-CREATE TABLE IF NOT EXISTS dashboard_shares (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dashboard_id UUID NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
-    shared_with_user_id UUID,
-    shared_with_role VARCHAR(50),
-    permission_level VARCHAR(20) NOT NULL DEFAULT 'view' CHECK (permission_level IN ('view', 'edit', 'admin')),
-    shared_by UUID NOT NULL,
-    shared_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP WITH TIME ZONE,
-    UNIQUE(dashboard_id, shared_with_user_id)
-);
-
--- Export jobs for PDF/PNG generation
+-- Create export jobs table for tracking CSV exports
 CREATE TABLE IF NOT EXISTS export_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dashboard_id UUID NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
-    export_type VARCHAR(10) NOT NULL CHECK (export_type IN ('pdf', 'png')),
-    format_options JSONB DEFAULT '{}',
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+    user_id VARCHAR(255) NOT NULL,
+    query_config JSONB NOT NULL DEFAULT '{}',
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
     file_path VARCHAR(500),
-    file_size BIGINT,
+    record_count INTEGER DEFAULT 0,
+    file_size BIGINT DEFAULT 0,
     error_message TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    started_at TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE,
-    created_by UUID NOT NULL
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '24 hours')
 );
 
--- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_dashboards_created_by ON dashboards(created_by);
-CREATE INDEX IF NOT EXISTS idx_dashboards_status ON dashboards(status);
-CREATE INDEX IF NOT EXISTS idx_dashboards_facility_id ON dashboards(facility_id);
-CREATE INDEX IF NOT EXISTS idx_dashboards_created_at ON dashboards(created_at);
+-- Create Kafka topics table for cache invalidation tracking
+CREATE TABLE IF NOT EXISTS kafka_topics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    topic_name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE INDEX IF NOT EXISTS idx_widgets_dashboard_id ON widgets(dashboard_id);
-CREATE INDEX IF NOT EXISTS idx_widgets_type ON widgets(type);
-CREATE INDEX IF NOT EXISTS idx_widgets_query_id ON widgets(query_id);
-CREATE INDEX IF NOT EXISTS idx_widgets_created_at ON widgets(created_at);
+-- Create cache invalidation log table
+CREATE TABLE IF NOT EXISTS cache_invalidation_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    topic_name VARCHAR(255) NOT NULL,
+    cache_key VARCHAR(500) NOT NULL,
+    invalidation_reason VARCHAR(255),
+    triggered_by VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE INDEX IF NOT EXISTS idx_widget_queries_created_by ON widget_queries(created_by);
-CREATE INDEX IF NOT EXISTS idx_widget_queries_is_template ON widget_queries(is_template);
-
-CREATE INDEX IF NOT EXISTS idx_widget_data_cache_widget_id ON widget_data_cache(widget_id);
-CREATE INDEX IF NOT EXISTS idx_widget_data_cache_query_hash ON widget_data_cache(query_hash);
-CREATE INDEX IF NOT EXISTS idx_widget_data_cache_expires_at ON widget_data_cache(expires_at);
-
-CREATE INDEX IF NOT EXISTS idx_dashboard_versions_dashboard_id ON dashboard_versions(dashboard_id);
-CREATE INDEX IF NOT EXISTS idx_dashboard_versions_version ON dashboard_versions(dashboard_id, version);
-
-CREATE INDEX IF NOT EXISTS idx_dashboard_shares_dashboard_id ON dashboard_shares(dashboard_id);
-CREATE INDEX IF NOT EXISTS idx_dashboard_shares_shared_with_user_id ON dashboard_shares(shared_with_user_id);
-
-CREATE INDEX IF NOT EXISTS idx_export_jobs_dashboard_id ON export_jobs(dashboard_id);
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_saved_views_user_id ON saved_views(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_views_dashboard_type ON saved_views(dashboard_type);
+CREATE INDEX IF NOT EXISTS idx_saved_views_is_public ON saved_views(is_public) WHERE is_public = TRUE;
+CREATE INDEX IF NOT EXISTS idx_dashboard_filters_user_id ON dashboard_filters(user_id);
+CREATE INDEX IF NOT EXISTS idx_dashboard_filters_view_id ON dashboard_filters(view_id);
+CREATE INDEX IF NOT EXISTS idx_drilldown_configs_user_id ON drilldown_configs(user_id);
+CREATE INDEX IF NOT EXISTS idx_drilldown_configs_view_id ON drilldown_configs(view_id);
+CREATE INDEX IF NOT EXISTS idx_export_jobs_user_id ON export_jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_export_jobs_status ON export_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_export_jobs_created_at ON export_jobs(created_at);
+CREATE INDEX IF NOT EXISTS idx_cache_invalidation_log_cache_key ON cache_invalidation_log(cache_key);
+CREATE INDEX IF NOT EXISTS idx_cache_invalidation_log_created_at ON cache_invalidation_log(created_at);
 
--- Triggers for updated_at timestamps
+-- Insert default Kafka topics
+INSERT INTO kafka_topics (topic_name, description) VALUES 
+    ('analytics-cache-invalidation', 'Cache invalidation for analytics data'),
+    ('dashboard-updates', 'Dashboard configuration updates'),
+    ('export-notifications', 'Export job notifications')
+ON CONFLICT (topic_name) DO NOTHING;
+
+-- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -144,11 +107,15 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_dashboards_updated_at BEFORE UPDATE ON dashboards
+-- Create triggers for updated_at
+CREATE TRIGGER update_saved_views_updated_at BEFORE UPDATE ON saved_views 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_widgets_updated_at BEFORE UPDATE ON widgets
+CREATE TRIGGER update_dashboard_filters_updated_at BEFORE UPDATE ON dashboard_filters 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_widget_queries_updated_at BEFORE UPDATE ON widget_queries
+CREATE TRIGGER update_drilldown_configs_updated_at BEFORE UPDATE ON drilldown_configs 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_kafka_topics_updated_at BEFORE UPDATE ON kafka_topics 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

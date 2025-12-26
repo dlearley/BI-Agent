@@ -53,9 +53,9 @@ const sdk = new NodeSDK({
       },
     }),
     new HttpInstrumentation({
-      requestHook: (span, request: any) => {
-        const headers = (request as any).headers || {};
-        span.setAttribute('http.request_id', headers['x-request-id'] || 'unknown');
+      requestHook: (span, request) => {
+        const req = request as any;
+        span.setAttribute('http.request_id', req.headers?.['x-request-id'] || 'unknown');
       },
     }),
     new ExpressInstrumentation({

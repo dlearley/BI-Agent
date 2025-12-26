@@ -1,0 +1,151 @@
+{
+  "pipeline_kpis": {
+    "facility_id": "facility-001",
+    "facility_name": "General Hospital",
+    "month": "2024-01-01",
+    "total_applications": 150,
+    "hired_count": 75,
+    "rejected_count": 45,
+    "pending_count": 20,
+    "interview_count": 95,
+    "avg_time_to_fill_days": 25.5
+  },
+  "revenue_kpis": {
+    "facility_id": "facility-001", 
+    "facility_name": "General Hospital",
+    "month": "2024-01-01",
+    "total_revenue": 750000.00,
+    "avg_revenue_per_invoice": 5000.00
+  },
+  "compliance_kpis": {
+    "facility_id": "facility-001",
+    "facility_name": "General Hospital", 
+    "month": "2024-01-01",
+    "total_applications": 150,
+    "compliant_applications": 142,
+    "compliance_rate": 94.67,
+    "violation_count": 8
+  },
+  "outreach_kpis": {
+    "facility_id": "facility-001",
+    "facility_name": "General Hospital",
+    "month": "2024-01-01", 
+    "total_outreach": 500,
+    "response_rate": 12.5,
+    "conversion_rate": 3.2
+  },
+  "combined_kpis": {
+    "facility_id": "facility-001",
+    "facility_name": "General Hospital",
+    "month": "2024-01-01",
+    "total_applications": 150,
+    "hired_count": 75,
+    "avg_time_to_fill_days": 25.5,
+    "compliant_applications": 142,
+    "compliance_rate": 94.67,
+    "violation_count": 8,
+    "total_revenue": 750000.00,
+    "avg_revenue_per_invoice": 5000.00,
+    "total_outreach": 500,
+    "avg_response_rate": 12.5,
+    "avg_conversion_rate": 3.2
+  },
+  "dashboard_filters": {
+    "team": ["team-a", "team-b"],
+    "rep": ["rep-001", "rep-002", "rep-003"],
+    "timeRange": {
+      "preset": "last30days",
+      "startDate": "2023-12-01",
+      "endDate": "2023-12-31"
+    },
+    "pipeline": ["pipeline-1", "pipeline-2"],
+    "facilityId": "facility-001"
+  },
+  "saved_view": {
+    "id": "view-001",
+    "userId": "user-001",
+    "name": "Q4 2024 Overview",
+    "description": "Combined dashboard view for Q4 2024 metrics",
+    "dashboardType": "combined",
+    "filters": {
+      "team": ["team-a"],
+      "timeRange": {
+        "preset": "last90days"
+      }
+    },
+    "layout": {
+      "widgets": [
+        {
+          "id": "widget-001",
+          "type": "kpi_card",
+          "title": "Total Applications",
+          "position": { "x": 0, "y": 0, "width": 4, "height": 2 },
+          "config": { "metric": "total_applications" },
+          "dataSource": "combined_kpis"
+        },
+        {
+          "id": "widget-002", 
+          "type": "chart",
+          "title": "Revenue Trend",
+          "position": { "x": 4, "y": 0, "width": 8, "height": 4 },
+          "config": { "chartType": "line", "metric": "total_revenue" },
+          "dataSource": "combined_kpis"
+        }
+      ],
+      "grid": {
+        "columns": 12,
+        "rowHeight": 100,
+        "margin": [10, 10],
+        "containerPadding": [10, 10]
+      }
+    },
+    "isPublic": false,
+    "isDefault": true,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  "drilldown_config": {
+    "id": "drilldown-001",
+    "userId": "user-001",
+    "viewId": "view-001",
+    "metricName": "total_applications",
+    "drilldownPath": [
+      {
+        "level": 1,
+        "dimension": "facility_id",
+        "aggregation": "sum"
+      },
+      {
+        "level": 2,
+        "dimension": "month",
+        "aggregation": "sum"
+      }
+    ],
+    "targetTable": "pipeline_kpis_materialized",
+    "filters": {
+      "startDate": "2023-10-01",
+      "endDate": "2023-12-31"
+    },
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  "export_job": {
+    "id": "export-001",
+    "userId": "user-001",
+    "queryConfig": {
+      "dashboardType": "combined",
+      "timeRange": {
+        "preset": "last30days"
+      },
+      "format": "csv"
+    },
+    "status": "completed",
+    "filePath": "/exports/export_export-001_1704067200000.csv",
+    "recordCount": 150,
+    "fileSize": 15360,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "startedAt": "2024-01-01T00:01:00.000Z",
+    "completedAt": "2024-01-01T00:02:30.000Z",
+    "expiresAt": "2024-01-02T00:00:00.000Z"
+  }
+}
