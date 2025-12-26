@@ -1,0 +1,138 @@
+version: 2
+
+models:
+  - name: stg_applications
+    description: "Staging model for applications data with data quality checks"
+    columns:
+      - name: application_id
+        description: "Primary key for applications"
+        tests:
+          - unique
+          - not_null
+      - name: facility_id
+        description: "Foreign key to facilities table"
+        tests:
+          - not_null
+          - relationships:
+              to: source('raw', 'facilities')
+              field: id
+      - name: candidate_id
+        description: "Foreign key to candidates table"
+        tests:
+          - not_null
+      - name: status
+        description: "Current status of the application"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['pending', 'interview', 'hired', 'rejected']
+      - name: created_at
+        description: "Timestamp when application was created"
+        tests:
+          - not_null
+      - name: compliance_score
+        description: "Compliance score (0-100)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: has_violations
+        description: "Boolean flag indicating compliance violations"
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.recency:
+          datepart: day
+          field: created_at
+          interval: 7
+          config:
+            severity: warn
+
+  - name: stg_invoices
+    description: "Staging model for invoices data with data quality checks"
+    columns:
+      - name: invoice_id
+        description: "Primary key for invoices"
+        tests:
+          - unique
+          - not_null
+      - name: facility_id
+        description: "Foreign key to facilities table"
+        tests:
+          - not_null
+          - relationships:
+              to: source('raw', 'facilities')
+              field: id
+      - name: application_id
+        description: "Foreign key to applications table"
+        tests:
+          - relationships:
+              to: source('raw', 'applications')
+              field: id
+      - name: amount
+        description: "Invoice amount"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: status
+        description: "Invoice status"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['paid', 'pending', 'cancelled']
+      - name: created_at
+        description: "Timestamp when invoice was created"
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.recency:
+          datepart: day
+          field: created_at
+          interval: 7
+          config:
+            severity: warn
+
+  - name: stg_outreach
+    description: "Staging model for outreach data with data quality checks"
+    columns:
+      - name: outreach_id
+        description: "Primary key for outreach records"
+        tests:
+          - unique
+          - not_null
+      - name: facility_id
+        description: "Foreign key to facilities table"
+        tests:
+          - not_null
+          - relationships:
+              to: source('raw', 'facilities')
+              field: id
+      - name: channel
+        description: "Outreach channel"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['email', 'phone', 'social', 'sms', 'other']
+      - name: sent_at
+        description: "Timestamp when outreach was sent"
+        tests:
+          - not_null
+      - name: response_received
+        description: "Boolean flag indicating if response was received"
+        tests:
+          - not_null
+      - name: converted
+        description: "Boolean flag indicating if outreach led to conversion"
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.recency:
+          datepart: day
+          field: sent_at
+          interval: 7
+          config:
+            severity: warn
