@@ -15,7 +15,7 @@ export class QueueService {
 
   constructor() {
     this.connection = new Redis(config.redis);
-    
+
     this.analyticsQueue = new Queue('analytics-queue', {
       connection: this.connection,
       defaultJobOptions: {
@@ -66,8 +66,8 @@ export class QueueService {
             message: `Successfully refreshed ${viewName || 'all'} analytics views`,
             data: {
               refreshedAt: new Date().toISOString(),
-              viewName: viewName || 'all'
-            }
+              viewName: viewName || 'all',
+            },
           };
 
         case 'refresh_view':
@@ -80,8 +80,8 @@ export class QueueService {
             message: `Successfully refreshed view: ${viewName}`,
             data: {
               refreshedAt: new Date().toISOString(),
-              viewName
-            }
+              viewName,
+            },
           };
 
         default:
@@ -91,7 +91,7 @@ export class QueueService {
       return {
         success: false,
         message: `Failed to process analytics job: ${type}`,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -123,7 +123,7 @@ export class QueueService {
   }
 
   async enqueueRefreshJob(viewName?: string, delay?: number): Promise<Job<JobData>> {
-    const jobData: JobData = viewName 
+    const jobData: JobData = viewName
       ? { type: 'refresh_view', viewName }
       : { type: 'refresh_analytics' };
 

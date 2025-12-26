@@ -40,34 +40,46 @@ describe('Analytics Controller', () => {
 
     app = express();
     app.use(express.json());
-    
+
     // Mock authentication middleware
     const mockAuth = jest.requireMock('../../middleware/auth') as jest.Mocked<AuthModule>;
-    mockAuth.authenticate.mockImplementation(async (req: Request & { user?: User }, _res: Response, next: NextFunction) => {
-      req.user = mockAdminUser; // Default to admin user
-      next();
-    });
-    
+    mockAuth.authenticate.mockImplementation(
+      async (req: Request & { user?: User }, _res: Response, next: NextFunction) => {
+        req.user = mockAdminUser; // Default to admin user
+        next();
+      }
+    );
+
     mockAuth.authorize.mockImplementation(
       () => (_req: Request & { user?: User }, _res: Response, next: NextFunction) => {
         next();
       }
     );
-    mockAuth.facilityScope.mockImplementation((req: Request & { user?: User }, _res: Response, next: NextFunction) => {
-      next();
-    });
-    
+    mockAuth.facilityScope.mockImplementation(
+      (req: Request & { user?: User }, _res: Response, next: NextFunction) => {
+        next();
+      }
+    );
+
     // Mock HIPAA middleware
     const mockHipaa = jest.requireMock('../../middleware/hipaa') as jest.Mocked<HipaaModule>;
-    mockHipaa.hipaaCompliance.mockImplementation((req: Request & { user?: User }, _res: Response, next: NextFunction) => {
-      next();
-    });
-    
+    mockHipaa.hipaaCompliance.mockImplementation(
+      (req: Request & { user?: User }, _res: Response, next: NextFunction) => {
+        next();
+      }
+    );
+
     // Setup routes
     app.get('/analytics/pipeline', analyticsController.getPipelineKPIs.bind(analyticsController));
-    app.get('/analytics/compliance', analyticsController.getComplianceMetrics.bind(analyticsController));
+    app.get(
+      '/analytics/compliance',
+      analyticsController.getComplianceMetrics.bind(analyticsController)
+    );
     app.get('/analytics/revenue', analyticsController.getRevenueMetrics.bind(analyticsController));
-    app.get('/analytics/outreach', analyticsController.getOutreachMetrics.bind(analyticsController));
+    app.get(
+      '/analytics/outreach',
+      analyticsController.getOutreachMetrics.bind(analyticsController)
+    );
     app.get('/analytics/kpis', analyticsController.getCombinedKPIs.bind(analyticsController));
     app.post('/analytics/refresh', analyticsController.refreshAnalytics.bind(analyticsController));
     app.get('/analytics/health', analyticsController.getAnalyticsHealth.bind(analyticsController));
@@ -90,7 +102,10 @@ describe('Analytics Controller', () => {
         cached: false,
         timestamp: expect.any(String),
       });
-      expect(mockAnalyticsService.analyticsService.getPipelineKPIs).toHaveBeenCalledWith({}, mockAdminUser);
+      expect(mockAnalyticsService.analyticsService.getPipelineKPIs).toHaveBeenCalledWith(
+        {},
+        mockAdminUser
+      );
     });
 
     it('should handle query parameters', async () => {
@@ -104,7 +119,10 @@ describe('Analytics Controller', () => {
 
       // Assert
       expect(response.status).toBe(200);
-      expect(mockAnalyticsService.analyticsService.getPipelineKPIs).toHaveBeenCalledWith(query, mockAdminUser);
+      expect(mockAnalyticsService.analyticsService.getPipelineKPIs).toHaveBeenCalledWith(
+        query,
+        mockAdminUser
+      );
     });
 
     it('should handle service errors', async () => {
@@ -138,7 +156,9 @@ describe('Analytics Controller', () => {
         },
       ];
       const mockAnalyticsService = require('../../services/analytics.service');
-      mockAnalyticsService.analyticsService.getComplianceMetrics.mockResolvedValue(mockComplianceMetrics);
+      mockAnalyticsService.analyticsService.getComplianceMetrics.mockResolvedValue(
+        mockComplianceMetrics
+      );
 
       // Act
       const response = await request(app).get('/analytics/compliance');
@@ -180,7 +200,9 @@ describe('Analytics Controller', () => {
         effectiveChannels: [],
       };
       const mockAnalyticsService = require('../../services/analytics.service');
-      mockAnalyticsService.analyticsService.getOutreachMetrics.mockResolvedValue(mockOutreachMetrics);
+      mockAnalyticsService.analyticsService.getOutreachMetrics.mockResolvedValue(
+        mockOutreachMetrics
+      );
 
       // Act
       const response = await request(app).get('/analytics/outreach');
@@ -279,7 +301,7 @@ describe('Analytics Controller', () => {
       ];
       const mockAnalyticsService = require('../../services/analytics.service');
       mockAnalyticsService.analyticsService.getLastRefreshTimes.mockResolvedValue(mockLastRefresh);
-      
+
       queueServiceMock.getQueueStats.mockResolvedValue({
         waiting: 0,
         active: 0,

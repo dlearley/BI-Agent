@@ -3,6 +3,7 @@
 ## 🚀 Quick Start
 
 ### 1. Install Dependencies
+
 ```bash
 npm install
 ```
@@ -10,6 +11,7 @@ npm install
 ### 2. Run Local Checks
 
 #### Lint Code
+
 ```bash
 npm run lint
 ```
@@ -17,6 +19,7 @@ npm run lint
 Expected: 0 errors, ~43 warnings (all warnings are safe to ignore)
 
 #### Build Application
+
 ```bash
 npm run build
 ```
@@ -24,6 +27,7 @@ npm run build
 Expected: Build completes successfully, creates `analytics-service/dist/`
 
 #### Run Unit Tests
+
 ```bash
 # Start required services first
 cd analytics-service
@@ -39,6 +43,7 @@ docker-compose down
 ### 3. Test Full Stack
 
 #### Start Everything with Docker Compose
+
 ```bash
 cd analytics-service
 docker-compose up -d
@@ -85,23 +90,30 @@ docker-compose down
 ## 🔧 Troubleshooting
 
 ### Issue: pnpm not found
+
 **Solution**: The project uses npm locally, pnpm in CI. Use npm commands.
 
 ### Issue: Tests fail - "Cannot connect to database"
+
 **Solution**: Start PostgreSQL and Redis:
+
 ```bash
 cd analytics-service
 docker-compose up -d postgres redis
 ```
 
 ### Issue: Port 3000 already in use
+
 **Solution**: Kill existing process:
+
 ```bash
 lsof -ti:3000 | xargs kill -9
 ```
 
 ### Issue: ESLint errors
+
 **Solution**: Auto-fix issues:
+
 ```bash
 npm run lint:fix --workspace=bi-agent-analytics
 ```
@@ -111,7 +123,7 @@ npm run lint:fix --workspace=bi-agent-analytics
 Before pushing your code:
 
 - [ ] Run `npm run lint` - should pass with warnings only
-- [ ] Run `npm run build` - should complete successfully  
+- [ ] Run `npm run build` - should complete successfully
 - [ ] Run `npm test` - all tests should pass
 - [ ] Test with Docker Compose - health check should succeed
 - [ ] Review your changes with `git diff`

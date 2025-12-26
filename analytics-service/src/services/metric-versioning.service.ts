@@ -35,22 +35,25 @@ export class MetricVersioningService {
     };
 
     // Insert the new version
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO ${this.versionTable} (
         id, metric_type, metric_id, version, data, timestamp, 
         created_by, change_description, compliance_framework
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    `, [
-      version.id,
-      version.metricType,
-      version.metricId,
-      version.version,
-      version.data,
-      version.timestamp,
-      version.createdBy,
-      version.changeDescription,
-      version.complianceFramework,
-    ]);
+    `,
+      [
+        version.id,
+        version.metricType,
+        version.metricId,
+        version.version,
+        version.data,
+        version.timestamp,
+        version.createdBy,
+        version.changeDescription,
+        version.complianceFramework,
+      ]
+    );
 
     // Clean up old versions if retention limit is exceeded
     await this.cleanupOldVersions(metricType, metricId);
@@ -64,13 +67,16 @@ export class MetricVersioningService {
     limit?: number
   ): Promise<MetricVersion[]> {
     const limitClause = limit ? `LIMIT ${limit}` : '';
-    
-    const rows = await db.query(`
+
+    const rows = await db.query(
+      `
       SELECT * FROM ${this.versionTable}
       WHERE metric_type = $1 AND metric_id = $2
       ORDER BY version DESC
       ${limitClause}
-    `, [metricType, metricId]);
+    `,
+      [metricType, metricId]
+    );
 
     return rows.map(row => ({
       ...row,
@@ -83,10 +89,13 @@ export class MetricVersioningService {
     metricId: string,
     version: number
   ): Promise<MetricVersion | null> {
-    const row = await db.queryOne(`
+    const row = await db.queryOne(
+      `
       SELECT * FROM ${this.versionTable}
       WHERE metric_type = $1 AND metric_id = $2 AND version = $3
-    `, [metricType, metricId, version]);
+    `,
+      [metricType, metricId, version]
+    );
 
     if (!row) {
       return null;
@@ -98,16 +107,16 @@ export class MetricVersioningService {
     };
   }
 
-  async getLatestVersion(
-    metricType: string,
-    metricId: string
-  ): Promise<MetricVersion | null> {
-    const row = await db.queryOne(`
+  async getLatestVersion(metricType: string, metricId: string): Promise<MetricVersion | null> {
+    const row = await db.queryOne(
+      `
       SELECT * FROM ${this.versionTable}
       WHERE metric_type = $1 AND metric_id = $2
       ORDER BY version DESC
       LIMIT 1
-    `, [metricType, metricId]);
+    `,
+      [metricType, metricId]
+    );
 
     if (!row) {
       return null;
@@ -150,7 +159,7 @@ export class MetricVersioningService {
     user: User
   ): Promise<MetricVersion> {
     const versionToRestore = await this.getVersion(metricType, metricId, version);
-    
+
     if (!versionToRestore) {
       throw new Error(`Version ${version} not found for metric ${metricType}:${metricId}`);
     }
@@ -167,11 +176,14 @@ export class MetricVersioningService {
   }
 
   async deleteVersionsOlderThan(date: Date): Promise<number> {
-    const result = await db.query(`
+    const result = await db.query(
+      `
       DELETE FROM ${this.versionTable}
       WHERE timestamp < $1
       RETURNING id
-    `, [date]);
+    `,
+      [date]
+    );
 
     return result.length;
   }
@@ -195,26 +207,32 @@ export class MetricVersioningService {
 
   private async cleanupOldVersions(metricType: string, metricId: string): Promise<void> {
     const retentionLimit = config.governance.metricVersioning.retention;
-    
+
     // Get versions that should be kept
-    const versionsToKeep = await db.query(`
+    const versionsToKeep = await db.query(
+      `
       SELECT id FROM ${this.versionTable}
       WHERE metric_type = $1 AND metric_id = $2
       ORDER BY version DESC
       LIMIT $3
-    `, [metricType, metricId, retentionLimit]);
+    `,
+      [metricType, metricId, retentionLimit]
+    );
 
     const keepIds = versionsToKeep.map(v => v.id);
-    
+
     if (keepIds.length === 0) {
       return;
     }
 
     // Delete versions that exceed the retention limit
-    await db.query(`
+    await db.query(
+      `
       DELETE FROM ${this.versionTable}
       WHERE metric_type = $1 AND metric_id = $2 AND id NOT IN (${keepIds.map((_, i) => `$${i + 3}`).join(',')})
-    `, [metricType, metricId, ...keepIds]);
+    `,
+      [metricType, metricId, ...keepIds]
+    );
   }
 
   private calculateDifferences(data1: any, data2: any): any {

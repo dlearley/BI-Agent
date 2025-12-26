@@ -35,16 +35,14 @@ class MigrationRunner {
   async loadMigrationFiles(): Promise<Migration[]> {
     try {
       const files = await fs.readdir(this.migrationsPath);
-      const sqlFiles = files
-        .filter(file => file.endsWith('.sql'))
-        .sort(); // Ensure consistent order
+      const sqlFiles = files.filter(file => file.endsWith('.sql')).sort(); // Ensure consistent order
 
       const migrations: Migration[] = [];
-      
+
       for (const file of sqlFiles) {
         const filePath = path.join(this.migrationsPath, file);
         const sql = await fs.readFile(filePath, 'utf-8');
-        
+
         migrations.push({
           id: file.replace('.sql', ''),
           filename: file,
@@ -59,52 +57,48 @@ class MigrationRunner {
   }
 
   async executeMigration(migration: Migration): Promise<void> {
-    await db.transaction(async (client) => {
+    await db.transaction(async client => {
       // Execute the migration SQL
       await client.query(migration.sql);
-      
+
       // Record the migration
-      await client.query(
-        'INSERT INTO migrations (filename) VALUES ($1)',
-        [migration.filename]
-      );
+      await client.query('INSERT INTO migrations (filename) VALUES ($1)', [migration.filename]);
     });
-    
+
     console.log(`✅ Executed migration: ${migration.filename}`);
   }
 
   async migrate(): Promise<void> {
     try {
       console.log('🔄 Starting database migration...');
-      
+
       // Create migrations table if it doesn't exist
       await this.createMigrationsTable();
-      
+
       // Get executed migrations
       const executedMigrations = await this.getExecutedMigrations();
-      
+
       // Load all migration files
       const allMigrations = await this.loadMigrationFiles();
-      
+
       // Filter out already executed migrations
       const pendingMigrations = allMigrations.filter(
         migration => !executedMigrations.includes(migration.filename)
       );
-      
+
       if (pendingMigrations.length === 0) {
         console.log('✅ No pending migrations to execute');
         return;
       }
-      
+
       console.log(`📋 Found ${pendingMigrations.length} pending migrations`);
-      
+
       // Execute pending migrations
       for (const migration of pendingMigrations) {
         await this.executeMigration(migration);
       }
-      
+
       console.log('🎉 Migration completed successfully');
-      
     } catch (error) {
       console.error('❌ Migration failed:', error);
       throw error;
@@ -114,33 +108,29 @@ class MigrationRunner {
   async rollback(steps: number = 1): Promise<void> {
     try {
       console.log(`🔄 Rolling back ${steps} migration(s)...`);
-      
+
       const sql = `
         SELECT filename 
         FROM migrations 
         ORDER BY id DESC 
         LIMIT $1
       `;
-      
+
       const migrations = await db.query(sql, [steps]);
-      
+
       if (migrations.length === 0) {
         console.log('✅ No migrations to rollback');
         return;
       }
-      
+
       for (const migration of migrations) {
         // Remove migration record
-        await db.query(
-          'DELETE FROM migrations WHERE filename = $1',
-          [migration.filename]
-        );
-        
+        await db.query('DELETE FROM migrations WHERE filename = $1', [migration.filename]);
+
         console.log(`↩️ Rolled back migration: ${migration.filename}`);
       }
-      
+
       console.log('🎉 Rollback completed successfully');
-      
     } catch (error) {
       console.error('❌ Rollback failed:', error);
       throw error;
@@ -150,32 +140,31 @@ class MigrationRunner {
   async status(): Promise<void> {
     try {
       console.log('📊 Migration status:');
-      
+
       const executedMigrations = await this.getExecutedMigrations();
       const allMigrations = await this.loadMigrationFiles();
-      
+
       console.log(`\n📋 Total migrations: ${allMigrations.length}`);
       console.log(`✅ Executed migrations: ${executedMigrations.length}`);
       console.log(`⏳ Pending migrations: ${allMigrations.length - executedMigrations.length}`);
-      
+
       const pendingMigrations = allMigrations.filter(
         migration => !executedMigrations.includes(migration.filename)
       );
-      
+
       if (pendingMigrations.length > 0) {
         console.log('\n⏳ Pending migrations:');
         pendingMigrations.forEach(migration => {
           console.log(`  - ${migration.filename}`);
         });
       }
-      
+
       if (executedMigrations.length > 0) {
         console.log('\n✅ Executed migrations:');
         executedMigrations.forEach(filename => {
           console.log(`  - ${filename}`);
         });
       }
-      
     } catch (error) {
       console.error('❌ Failed to get migration status:', error);
       throw error;
@@ -187,9 +176,9 @@ class MigrationRunner {
 async function main(): Promise<void> {
   const command = process.argv[2];
   const steps = parseInt(process.argv[3] || '1');
-  
+
   const runner = new MigrationRunner();
-  
+
   try {
     switch (command) {
       case 'migrate':

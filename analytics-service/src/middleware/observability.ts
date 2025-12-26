@@ -43,7 +43,7 @@ export function errorLoggingMiddleware(
   next: NextFunction
 ): void {
   const correlationId = getCorrelationId();
-  
+
   logger.error('Request error', {
     error: err.message,
     stack: err.stack,

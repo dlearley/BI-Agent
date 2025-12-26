@@ -6,11 +6,10 @@ test.describe('Seed Data E2E Tests', () => {
 
   test.beforeAll(async () => {
     // Get the demo organization
-    const org = await db.queryOne<{ id: string }>(
-      'SELECT id FROM organizations WHERE slug = $1',
-      ['demo-ecommerce']
-    );
-    
+    const org = await db.queryOne<{ id: string }>('SELECT id FROM organizations WHERE slug = $1', [
+      'demo-ecommerce',
+    ]);
+
     if (org) {
       organizationId = org.id;
     }
@@ -18,10 +17,9 @@ test.describe('Seed Data E2E Tests', () => {
 
   test.describe('Demo Organization', () => {
     test('should have demo organization accessible', async () => {
-      const org = await db.queryOne(
-        'SELECT * FROM organizations WHERE slug = $1',
-        ['demo-ecommerce']
-      );
+      const org = await db.queryOne('SELECT * FROM organizations WHERE slug = $1', [
+        'demo-ecommerce',
+      ]);
 
       expect(org).toBeTruthy();
       expect(org.name).toBe('Demo Ecommerce Inc.');
@@ -52,10 +50,9 @@ test.describe('Seed Data E2E Tests', () => {
 
   test.describe('Saved Queries', () => {
     test('should have at least 5 saved queries', async () => {
-      const queries = await db.query(
-        'SELECT * FROM saved_queries WHERE organization_id = $1',
-        [organizationId]
-      );
+      const queries = await db.query('SELECT * FROM saved_queries WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(queries.length).toBeGreaterThanOrEqual(5);
     });
@@ -114,15 +111,14 @@ test.describe('Seed Data E2E Tests', () => {
     });
 
     test('dashboards should have valid widget layouts', async () => {
-      const dashboards = await db.query(
-        'SELECT * FROM dashboards WHERE organization_id = $1',
-        [organizationId]
-      );
+      const dashboards = await db.query('SELECT * FROM dashboards WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       for (const dashboard of dashboards) {
         expect(dashboard.layout).toBeTruthy();
         expect(Array.isArray(dashboard.layout)).toBe(true);
-        
+
         // Check widget structure
         const widgets = dashboard.layout;
         for (const widget of widgets) {
@@ -136,10 +132,9 @@ test.describe('Seed Data E2E Tests', () => {
 
   test.describe('Alerts', () => {
     test('should have 2 alerts configured', async () => {
-      const alerts = await db.query(
-        'SELECT * FROM alerts WHERE organization_id = $1',
-        [organizationId]
-      );
+      const alerts = await db.query('SELECT * FROM alerts WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(alerts.length).toBeGreaterThanOrEqual(2);
     });
@@ -166,10 +161,9 @@ test.describe('Seed Data E2E Tests', () => {
     });
 
     test('alerts should have notification channels', async () => {
-      const alerts = await db.query(
-        'SELECT * FROM alerts WHERE organization_id = $1',
-        [organizationId]
-      );
+      const alerts = await db.query('SELECT * FROM alerts WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       for (const alert of alerts) {
         expect(Array.isArray(alert.notification_channels)).toBe(true);
@@ -198,7 +192,7 @@ test.describe('Seed Data E2E Tests', () => {
 
       expect(Array.isArray(template.sections)).toBe(true);
       expect(template.sections.length).toBeGreaterThan(0);
-      
+
       // Check section structure
       const section = template.sections[0];
       expect(section).toHaveProperty('title');
@@ -262,22 +256,20 @@ test.describe('Seed Data E2E Tests', () => {
 
   test.describe('Ecommerce Data', () => {
     test('should have customer data', async () => {
-      const customers = await db.query(
-        'SELECT * FROM customers WHERE organization_id = $1',
-        [organizationId]
-      );
+      const customers = await db.query('SELECT * FROM customers WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(customers.length).toBeGreaterThanOrEqual(10);
     });
 
     test('should have product data with inventory', async () => {
-      const products = await db.query(
-        'SELECT * FROM products WHERE organization_id = $1',
-        [organizationId]
-      );
+      const products = await db.query('SELECT * FROM products WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(products.length).toBeGreaterThanOrEqual(15);
-      
+
       // Check product has required fields
       const product = products[0];
       expect(product.name).toBeTruthy();
@@ -288,19 +280,15 @@ test.describe('Seed Data E2E Tests', () => {
     });
 
     test('should have orders with items', async () => {
-      const orders = await db.query(
-        'SELECT * FROM orders WHERE organization_id = $1',
-        [organizationId]
-      );
+      const orders = await db.query('SELECT * FROM orders WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(orders.length).toBeGreaterThanOrEqual(50);
 
       // Get items for first order
       const orderId = orders[0].id;
-      const items = await db.query(
-        'SELECT * FROM order_items WHERE order_id = $1',
-        [orderId]
-      );
+      const items = await db.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
 
       expect(items.length).toBeGreaterThan(0);
     });
@@ -316,10 +304,9 @@ test.describe('Seed Data E2E Tests', () => {
     });
 
     test('should have valid order calculations', async () => {
-      const orders = await db.query(
-        'SELECT * FROM orders WHERE organization_id = $1 LIMIT 10',
-        [organizationId]
-      );
+      const orders = await db.query('SELECT * FROM orders WHERE organization_id = $1 LIMIT 10', [
+        organizationId,
+      ]);
 
       for (const order of orders) {
         // Total should be subtotal + tax + shipping
@@ -344,7 +331,7 @@ test.describe('Seed Data E2E Tests', () => {
       );
 
       expect(customersWithOrders.length).toBeGreaterThan(0);
-      
+
       for (const customer of customersWithOrders) {
         expect(customer.total_spent).toBeGreaterThan(0);
         expect(customer.order_count).toBeGreaterThan(0);
@@ -420,7 +407,7 @@ test.describe('Seed Data E2E Tests', () => {
       );
 
       expect(result.length).toBeGreaterThan(0);
-      
+
       const topProduct = result[0];
       expect(topProduct.revenue).toBeGreaterThan(0);
       expect(topProduct.units_sold).toBeGreaterThan(0);

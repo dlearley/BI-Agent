@@ -42,7 +42,7 @@ describe('Governance Middleware Tests', () => {
   describe('Audit Logger Middleware', () => {
     it('should create audit context for auditable requests', async () => {
       const middleware = auditLogger('test_action', 'test_resource');
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(mockRequest.auditContext).toBeDefined();
@@ -53,7 +53,7 @@ describe('Governance Middleware Tests', () => {
 
     it('should skip audit logging when disabled', async () => {
       const middleware = auditLogger('test_action', 'test_resource');
-      
+
       // Mock config to disable audit logging
       const originalConfig = require('../../config').default;
       require('../../config').default.governance.auditLog.enabled = false;
@@ -64,13 +64,14 @@ describe('Governance Middleware Tests', () => {
       expect(nextFunction).toHaveBeenCalled();
 
       // Restore config
-      require('../../config').default.governance.auditLog.enabled = originalConfig.governance.auditLog.enabled;
+      require('../../config').default.governance.auditLog.enabled =
+        originalConfig.governance.auditLog.enabled;
     });
 
     it('should intercept response.json for audit logging', async () => {
       const middleware = auditLogger('test_action', 'test_resource');
       const responseData = { success: true, data: 'test' };
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       // Call the intercepted json method
@@ -83,7 +84,7 @@ describe('Governance Middleware Tests', () => {
   describe('Enhanced RBAC Middleware', () => {
     it('should allow access with proper permissions', async () => {
       const middleware = enhancedRBAC([Permission.VIEW_ANALYTICS], 'hipaa');
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled();
@@ -94,7 +95,7 @@ describe('Governance Middleware Tests', () => {
     it('should deny access without authentication', async () => {
       delete mockRequest.user;
       const middleware = enhancedRBAC([Permission.VIEW_ANALYTICS]);
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
@@ -105,7 +106,7 @@ describe('Governance Middleware Tests', () => {
     it('should deny access with insufficient permissions', async () => {
       mockRequest.user.permissions = [Permission.VIEW_FACILITY_ANALYTICS];
       const middleware = enhancedRBAC([Permission.VIEW_ANALYTICS]);
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(403);
@@ -116,7 +117,7 @@ describe('Governance Middleware Tests', () => {
       mockRequest.user.role = UserRole.RECRUITER;
       mockRequest.user.facilityId = 'facility-1';
       const middleware = enhancedRBAC([Permission.VIEW_ANALYTICS]);
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled();
@@ -125,7 +126,7 @@ describe('Governance Middleware Tests', () => {
 
     it('should apply column-level security filter', async () => {
       const middleware = enhancedRBAC([Permission.VIEW_ANALYTICS]);
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled();
@@ -136,7 +137,7 @@ describe('Governance Middleware Tests', () => {
   describe('Facility Data Filter', () => {
     it('should allow admin access to all facilities', async () => {
       const middleware = facilityDataFilter;
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled();
@@ -147,7 +148,7 @@ describe('Governance Middleware Tests', () => {
       mockRequest.user.role = UserRole.RECRUITER;
       mockRequest.user.facilityId = 'facility-1';
       const middleware = facilityDataFilter;
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled();
@@ -158,7 +159,7 @@ describe('Governance Middleware Tests', () => {
       mockRequest.user.role = UserRole.RECRUITER;
       delete mockRequest.user.facilityId;
       const middleware = facilityDataFilter;
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(403);
@@ -171,7 +172,7 @@ describe('Governance Middleware Tests', () => {
       mockRequest.user.permissions.push(Permission.EXPORT_DATA);
       mockRequest.query.limit = '100';
       const middleware = dataExportRestrictions;
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled();
@@ -179,7 +180,7 @@ describe('Governance Middleware Tests', () => {
 
     it('should deny export without export permission', async () => {
       const middleware = dataExportRestrictions;
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(403);
@@ -190,7 +191,7 @@ describe('Governance Middleware Tests', () => {
       mockRequest.user.permissions.push(Permission.EXPORT_DATA);
       mockRequest.query.limit = '5000'; // Exceeds default limit
       const middleware = dataExportRestrictions;
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
@@ -214,7 +215,7 @@ describe('Governance Middleware Tests', () => {
         piiAccess: false,
       };
       const middleware = dataExportRestrictions;
-      
+
       await middleware(mockRequest, mockResponse, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(402);
@@ -302,10 +303,12 @@ describe('Error Handling', () => {
     const nextFunction = jest.fn();
 
     // Mock governance service to throw error
-    jest.spyOn(governanceService, 'applyCompliancePreset').mockRejectedValue(new Error('Test error'));
+    jest
+      .spyOn(governanceService, 'applyCompliancePreset')
+      .mockRejectedValue(new Error('Test error'));
 
     const middleware = enhancedRBAC([Permission.VIEW_ANALYTICS]);
-    
+
     await middleware(mockRequest as any, mockResponse as any, nextFunction);
 
     expect(mockResponse.status).toHaveBeenCalledWith(500);

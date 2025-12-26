@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running pre-commit checks..."
+npx prettier --write "**/*.{ts,tsx,js,jsx,json,md,yml,yaml}" --quiet
+echo "Pre-commit checks completed."

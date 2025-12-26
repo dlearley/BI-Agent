@@ -10,10 +10,12 @@ const app: express.Application = express();
 // Security middleware
 app.use(helmet());
 app.use(compression());
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+    credentials: true,
+  })
+);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -40,7 +42,7 @@ app.get('/health', async (req, res) => {
 // Mock ML service endpoint
 app.post('/forecast', async (req, res) => {
   const { metric, model, horizon } = req.body;
-  
+
   const mockResponse = {
     id: uuidv4(),
     metric,
@@ -50,8 +52,8 @@ app.post('/forecast', async (req, res) => {
       value: Math.random() * 1000 + 500,
       confidenceInterval: {
         lower: Math.random() * 500 + 200,
-        upper: Math.random() * 1500 + 800
-      }
+        upper: Math.random() * 1500 + 800,
+      },
     })),
     backtest: {
       mae: Math.random() * 100,
@@ -61,15 +63,15 @@ app.post('/forecast', async (req, res) => {
       actualVsPredicted: Array.from({ length: 10 }, (_, i) => ({
         date: new Date(Date.now() - (10 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         actual: Math.random() * 1000 + 500,
-        predicted: Math.random() * 1000 + 500
-      }))
+        predicted: Math.random() * 1000 + 500,
+      })),
     },
     assumptions: req.body.assumptions || {},
     metadata: {
       createdAt: new Date().toISOString(),
       modelAccuracy: Math.random() * 0.2 + 0.8,
-      dataPoints: Math.floor(Math.random() * 500) + 100
-    }
+      dataPoints: Math.floor(Math.random() * 500) + 100,
+    },
   };
 
   res.json(mockResponse);
@@ -79,7 +81,13 @@ app.post('/forecast', async (req, res) => {
 app.get('/api/v1/forecast/metrics/available', (req, res) => {
   res.json({
     success: true,
-    data: ['revenue', 'pipeline_count', 'time_to_fill', 'compliance_rate', 'outreach_response_rate'],
+    data: [
+      'revenue',
+      'pipeline_count',
+      'time_to_fill',
+      'compliance_rate',
+      'outreach_response_rate',
+    ],
     timestamp: new Date().toISOString(),
   });
 });
@@ -98,11 +106,11 @@ app.post('/api/v1/forecast/', async (req, res) => {
     const mlResponse = await fetch('http://localhost:8001/forecast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(req.body),
     });
-    
+
     const forecastData = await mlResponse.json();
-    
+
     res.json({
       success: true,
       data: forecastData,
@@ -119,7 +127,7 @@ app.post('/api/v1/forecast/', async (req, res) => {
 
 app.post('/api/v1/forecast/scenarios', (req, res) => {
   const { name, description, forecastId, assumptions, isReport } = req.body;
-  
+
   res.status(201).json({
     success: true,
     data: {
@@ -130,7 +138,7 @@ app.post('/api/v1/forecast/scenarios', (req, res) => {
       assumptions,
       createdAt: new Date().toISOString(),
       createdBy: 'test-user',
-      isReport: isReport || false
+      isReport: isReport || false,
     },
     timestamp: new Date().toISOString(),
   });

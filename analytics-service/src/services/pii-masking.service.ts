@@ -28,14 +28,18 @@ export class PIIMaskingService {
     return this.recursiveMask(data, piiFields, strategy);
   }
 
-  private recursiveMask(obj: any, piiFields: string[], maskFunction: (value: string, field: string) => string): any {
+  private recursiveMask(
+    obj: any,
+    piiFields: string[],
+    maskFunction: (value: string, field: string) => string
+  ): any {
     if (Array.isArray(obj)) {
       return obj.map(item => this.recursiveMask(item, piiFields, maskFunction));
     }
 
     if (obj && typeof obj === 'object') {
       const masked: any = {};
-      
+
       for (const [key, value] of Object.entries(obj)) {
         if (this.isPIIField(key, piiFields) && typeof value === 'string') {
           masked[key] = maskFunction(value, key);
@@ -45,7 +49,7 @@ export class PIIMaskingService {
           masked[key] = value;
         }
       }
-      
+
       return masked;
     }
 
@@ -53,9 +57,10 @@ export class PIIMaskingService {
   }
 
   private isPIIField(fieldName: string, piiFields: string[]): boolean {
-    return piiFields.some(piiField => 
-      fieldName.toLowerCase().includes(piiField.toLowerCase()) ||
-      piiField.toLowerCase().includes(fieldName.toLowerCase())
+    return piiFields.some(
+      piiField =>
+        fieldName.toLowerCase().includes(piiField.toLowerCase()) ||
+        piiField.toLowerCase().includes(fieldName.toLowerCase())
     );
   }
 
@@ -78,13 +83,14 @@ export class PIIMaskingService {
 
   private partialMasking(value: string, field: string): string {
     const lowerField = field.toLowerCase();
-    
+
     if (lowerField.includes('email')) {
       const [username, domain] = value.split('@');
-      const maskedUsername = username.substring(0, 2) + '***' + username.substring(username.length - 1);
+      const maskedUsername =
+        username.substring(0, 2) + '***' + username.substring(username.length - 1);
       return `${maskedUsername}@${domain}`;
     }
-    
+
     if (lowerField.includes('phone')) {
       const cleaned = value.replace(/\D/g, '');
       if (cleaned.length >= 10) {
@@ -92,7 +98,7 @@ export class PIIMaskingService {
       }
       return '***-***-****';
     }
-    
+
     if (lowerField.includes('ssn')) {
       const cleaned = value.replace(/\D/g, '');
       if (cleaned.length >= 4) {
@@ -100,14 +106,14 @@ export class PIIMaskingService {
       }
       return '***-**-****';
     }
-    
+
     if (lowerField.includes('name')) {
       if (value.length <= 2) {
         return '**';
       }
       return value.substring(0, 1) + '***' + value.substring(value.length - 1);
     }
-    
+
     if (lowerField.includes('address')) {
       const parts = value.split(' ');
       if (parts.length >= 2) {
@@ -115,7 +121,7 @@ export class PIIMaskingService {
       }
       return '***';
     }
-    
+
     // Default partial masking
     if (value.length <= 4) {
       return '****';
@@ -130,7 +136,7 @@ export class PIIMaskingService {
       .update(value + config.jwt.secret) // Add secret to prevent rainbow table attacks
       .digest('hex')
       .substring(0, 8);
-    
+
     const fieldPrefix = field.toLowerCase().substring(0, 3);
     return `${fieldPrefix}_${hash}`;
   }
@@ -176,7 +182,11 @@ export class PIIMaskingService {
   }
 
   // Validate that PII masking is properly applied
-  validatePIIMasking(originalData: any, maskedData: any, securityContext: SecurityContext): boolean {
+  validatePIIMasking(
+    originalData: any,
+    maskedData: any,
+    securityContext: SecurityContext
+  ): boolean {
     const { preset, piiAccess } = securityContext;
 
     // If user has PII access or masking is disabled, data should be unchanged
@@ -186,28 +196,31 @@ export class PIIMaskingService {
 
     // Check that PII fields are properly masked
     const piiFields = preset.piiMasking.fields;
-    
+
     for (const field of piiFields) {
       const originalValue = this.extractFieldValue(originalData, field);
       const maskedValue = this.extractFieldValue(maskedData, field);
-      
-      if (originalValue && typeof originalValue === 'string' && 
-          maskedValue && typeof maskedValue === 'string') {
-        
+
+      if (
+        originalValue &&
+        typeof originalValue === 'string' &&
+        maskedValue &&
+        typeof maskedValue === 'string'
+      ) {
         // For full masking, value should be completely redacted
         if (preset.piiMasking.maskingStrategy === 'full') {
           if (maskedValue === originalValue) {
             return false; // Not masked
           }
         }
-        
+
         // For partial masking, value should be partially visible
         if (preset.piiMasking.maskingStrategy === 'partial') {
           if (maskedValue === originalValue || maskedValue === '[REDACTED]') {
             return false; // Either not masked or fully masked
           }
         }
-        
+
         // For hash masking, value should be a hash
         if (preset.piiMasking.maskingStrategy === 'hash') {
           const expectedHash = crypto
@@ -215,14 +228,14 @@ export class PIIMaskingService {
             .update(originalValue + config.jwt.secret)
             .digest('hex')
             .substring(0, 8);
-          
+
           if (!maskedValue.includes(expectedHash)) {
             return false; // Not properly hashed
           }
         }
       }
     }
-    
+
     return true;
   }
 
@@ -241,7 +254,7 @@ export class PIIMaskingService {
       if (key.toLowerCase().includes(fieldName.toLowerCase()) && typeof value === 'string') {
         return value;
       }
-      
+
       if (typeof value === 'object' && value !== null) {
         const nestedValue = this.extractFieldValue(value, fieldName);
         if (nestedValue) {
@@ -249,7 +262,7 @@ export class PIIMaskingService {
         }
       }
     }
-    
+
     return null;
   }
 }

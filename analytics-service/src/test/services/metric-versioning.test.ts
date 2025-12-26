@@ -119,7 +119,8 @@ describe('Metric Versioning Service Tests', () => {
       ).rejects.toThrow('Metric versioning is disabled');
 
       // Restore config
-      require('../../config').default.governance.metricVersioning.enabled = originalConfig.governance.metricVersioning.enabled;
+      require('../../config').default.governance.metricVersioning.enabled =
+        originalConfig.governance.metricVersioning.enabled;
     });
   });
 
@@ -211,10 +212,7 @@ describe('Metric Versioning Service Tests', () => {
     });
 
     it('should return null for non-existent metric', async () => {
-      const latest = await metricVersioningService.getLatestVersion(
-        'nonexistent',
-        'nonexistent'
-      );
+      const latest = await metricVersioningService.getLatestVersion('nonexistent', 'nonexistent');
 
       expect(latest).toBeNull();
     });
@@ -225,11 +223,11 @@ describe('Metric Versioning Service Tests', () => {
       await metricVersioningService.createVersion(
         'pipeline_kpis',
         'test-comparison',
-        { 
-          total: 100, 
-          hired: 20, 
+        {
+          total: 100,
+          hired: 20,
           rejected: 30,
-          department: 'Engineering'
+          department: 'Engineering',
         },
         testUser,
         'Initial version'
@@ -238,12 +236,12 @@ describe('Metric Versioning Service Tests', () => {
       await metricVersioningService.createVersion(
         'pipeline_kpis',
         'test-comparison',
-        { 
-          total: 150, 
-          hired: 35, 
+        {
+          total: 150,
+          hired: 35,
           rejected: 25,
           department: 'Engineering',
-          location: 'Remote'
+          location: 'Remote',
         },
         testUser,
         'Updated version'
@@ -279,12 +277,7 @@ describe('Metric Versioning Service Tests', () => {
 
     it('should throw error for non-existent version in comparison', async () => {
       await expect(
-        metricVersioningService.compareVersions(
-          'pipeline_kpis',
-          'test-comparison',
-          1,
-          99
-        )
+        metricVersioningService.compareVersions('pipeline_kpis', 'test-comparison', 1, 99)
       ).rejects.toThrow('Version 99 not found');
     });
   });
@@ -323,12 +316,7 @@ describe('Metric Versioning Service Tests', () => {
 
     it('should throw error for non-existent version restoration', async () => {
       await expect(
-        metricVersioningService.restoreVersion(
-          'pipeline_kpis',
-          'test-restore',
-          99,
-          testUser
-        )
+        metricVersioningService.restoreVersion('pipeline_kpis', 'test-restore', 99, testUser)
       ).rejects.toThrow('Version 99 not found');
     });
   });
@@ -397,12 +385,16 @@ describe('Metric Versioning Service Tests', () => {
 
       expect(status).toBeDefined();
       expect(Array.isArray(status)).toBe(true);
-      
-      const pipelineStatus = status.find(s => s.metric_type === 'pipeline_kpis' && s.metric_id === 'status-test-1');
+
+      const pipelineStatus = status.find(
+        s => s.metric_type === 'pipeline_kpis' && s.metric_id === 'status-test-1'
+      );
       expect(pipelineStatus.version_count).toBe(2);
       expect(pipelineStatus.latest_version).toBe(2);
 
-      const revenueStatus = status.find(s => s.metric_type === 'revenue_metrics' && s.metric_id === 'status-test-2');
+      const revenueStatus = status.find(
+        s => s.metric_type === 'revenue_metrics' && s.metric_id === 'status-test-2'
+      );
       expect(revenueStatus.version_count).toBe(1);
       expect(revenueStatus.latest_version).toBe(1);
     });
@@ -450,9 +442,7 @@ describe('Metric Versioning Service Tests', () => {
 
       // Check if indexes exist (this would require querying the database schema)
       // For now, we'll just ensure no errors are thrown
-      await expect(
-        db.query('SELECT 1 FROM metric_versions LIMIT 1')
-      ).resolves.not.toThrow();
+      await expect(db.query('SELECT 1 FROM metric_versions LIMIT 1')).resolves.not.toThrow();
     });
   });
 
@@ -471,10 +461,10 @@ describe('Metric Versioning Service Tests', () => {
         nested: {
           level1: {
             level2: {
-              value: 'deeply nested'
-            }
-          }
-        }
+              value: 'deeply nested',
+            },
+          },
+        },
       };
 
       const version = await metricVersioningService.createVersion(
@@ -502,7 +492,7 @@ describe('Metric Versioning Service Tests', () => {
         nested: {
           value: 'present',
           null_value: null,
-        }
+        },
       };
 
       const version = await metricVersioningService.createVersion(
@@ -512,11 +502,7 @@ describe('Metric Versioning Service Tests', () => {
         testUser
       );
 
-      const retrieved = await metricVersioningService.getVersion(
-        'null_test',
-        'test-nulls',
-        1
-      );
+      const retrieved = await metricVersioningService.getVersion('null_test', 'test-nulls', 1);
 
       expect(retrieved).toBeDefined();
       const parsedData = JSON.parse(retrieved!.data);
@@ -531,12 +517,12 @@ describe('Metric Versioning Service Tests', () => {
 
 async function cleanupTestData(): Promise<void> {
   try {
-    await db.query('DELETE FROM metric_versions WHERE metric_id LIKE \'test-%\'');
-    await db.query('DELETE FROM metric_versions WHERE metric_id LIKE \'status-test-%\'');
-    await db.query('DELETE FROM metric_versions WHERE metric_id LIKE \'cleanup-test\'');
-    await db.query('DELETE FROM metric_versions WHERE metric_id LIKE \'test-%\'');
-    await db.query('DELETE FROM metric_versions WHERE metric_id LIKE \'null-test%\'');
-    await db.query('DELETE FROM metric_versions WHERE metric_id LIKE \'complex%\'');
+    await db.query("DELETE FROM metric_versions WHERE metric_id LIKE 'test-%'");
+    await db.query("DELETE FROM metric_versions WHERE metric_id LIKE 'status-test-%'");
+    await db.query("DELETE FROM metric_versions WHERE metric_id LIKE 'cleanup-test'");
+    await db.query("DELETE FROM metric_versions WHERE metric_id LIKE 'test-%'");
+    await db.query("DELETE FROM metric_versions WHERE metric_id LIKE 'null-test%'");
+    await db.query("DELETE FROM metric_versions WHERE metric_id LIKE 'complex%'");
   } catch (error) {
     console.error('Error cleaning up test data:', error);
   }

@@ -10,7 +10,10 @@ export interface SecureRequest extends AuthenticatedRequest {
   columnLevelFilter?: string[];
 }
 
-export const enhancedRBAC = (requiredPermissions: Permission[], complianceFramework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa') => {
+export const enhancedRBAC = (
+  requiredPermissions: Permission[],
+  complianceFramework: 'hipaa' | 'gdpr' | 'soc2' = 'hipaa'
+) => {
   return async (req: SecureRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) {
@@ -24,10 +27,10 @@ export const enhancedRBAC = (requiredPermissions: Permission[], complianceFramew
       );
 
       if (!hasPermission) {
-        res.status(403).json({ 
+        res.status(403).json({
           error: 'Insufficient permissions',
           required: requiredPermissions,
-          current: req.user.permissions
+          current: req.user.permissions,
         });
         return;
       }
@@ -79,7 +82,11 @@ export const facilityDataFilter = (req: SecureRequest, res: Response, next: Next
   next();
 };
 
-export const dataExportRestrictions = (req: SecureRequest, res: Response, next: NextFunction): void => {
+export const dataExportRestrictions = (
+  req: SecureRequest,
+  res: Response,
+  next: NextFunction
+): void => {
   if (!req.securityContext) {
     res.status(401).json({ error: 'Authentication required' });
     return;
@@ -101,9 +108,9 @@ export const dataExportRestrictions = (req: SecureRequest, res: Response, next: 
 
   // Check approval requirement
   if (preset.exportRestrictions.approvalRequired) {
-    res.status(402).json({ 
+    res.status(402).json({
       error: 'Export approval required',
-      message: 'Please contact your administrator for export approval'
+      message: 'Please contact your administrator for export approval',
     });
     return;
   }
@@ -111,10 +118,10 @@ export const dataExportRestrictions = (req: SecureRequest, res: Response, next: 
   // Check record limit
   const requestedLimit = parseInt(req.query.limit as string) || 1000;
   if (requestedLimit > preset.exportRestrictions.maxRecords) {
-    res.status(400).json({ 
+    res.status(400).json({
       error: 'Export limit exceeded',
       maxAllowed: preset.exportRestrictions.maxRecords,
-      requested: requestedLimit
+      requested: requestedLimit,
     });
     return;
   }
@@ -122,9 +129,12 @@ export const dataExportRestrictions = (req: SecureRequest, res: Response, next: 
   next();
 };
 
-const createSecurityContext = (user: User, complianceFramework: 'hipaa' | 'gdpr' | 'soc2'): SecurityContext => {
+const createSecurityContext = (
+  user: User,
+  complianceFramework: 'hipaa' | 'gdpr' | 'soc2'
+): SecurityContext => {
   const preset = config.governance.compliancePresets[complianceFramework];
-  
+
   return {
     user,
     complianceFramework,
@@ -137,7 +147,7 @@ const createSecurityContext = (user: User, complianceFramework: 'hipaa' | 'gdpr'
 
 const buildRowLevelFilter = (securityContext: SecurityContext): string => {
   const { user } = securityContext;
-  
+
   // Admins can see all data
   if (user.role === UserRole.ADMIN) {
     return '';
@@ -171,11 +181,18 @@ const buildColumnLevelFilter = (securityContext: SecurityContext): string[] => {
     // Allow PII columns based on masking strategy
     if (preset.piiMasking.maskingStrategy === 'full') {
       // Full access to PII columns
-      config.governance.columnLevelSecurity.piiColumns.forEach(col => restrictedColumns.delete(col));
-      config.governance.columnLevelSecurity.restrictedColumns.forEach(col => restrictedColumns.add(col));
+      config.governance.columnLevelSecurity.piiColumns.forEach(col =>
+        restrictedColumns.delete(col)
+      );
+      config.governance.columnLevelSecurity.restrictedColumns.forEach(col =>
+        restrictedColumns.add(col)
+      );
     } else if (preset.piiMasking.maskingStrategy === 'partial') {
       // Partial access - some PII fields allowed
-      const partialPII = preset.piiMasking.fields.slice(0, Math.ceil(preset.piiMasking.fields.length / 2));
+      const partialPII = preset.piiMasking.fields.slice(
+        0,
+        Math.ceil(preset.piiMasking.fields.length / 2)
+      );
       partialPII.forEach(col => restrictedColumns.delete(col));
     }
     // Hash strategy means no direct access to PII columns
@@ -191,13 +208,13 @@ export const applyColumnLevelSecurity = (data: any[], restrictedColumns: string[
 
   return data.map(row => {
     const filteredRow = { ...row };
-    
+
     for (const column of restrictedColumns) {
       if (column in filteredRow) {
         delete filteredRow[column];
       }
     }
-    
+
     return filteredRow;
   });
 };
@@ -210,7 +227,7 @@ export const applyRowLevelSecurity = (sql: string, rowFilter?: string): string =
   // Find WHERE clause and add row filter
   const whereRegex = /\bWHERE\b/i;
   const hasWhere = whereRegex.test(sql);
-  
+
   if (hasWhere) {
     return sql.replace(/\bWHERE\b/i, `WHERE ${rowFilter} AND`);
   } else {
@@ -220,6 +237,6 @@ export const applyRowLevelSecurity = (sql: string, rowFilter?: string): string =
       return sql.replace(fromMatch[0], `${fromMatch[0]} WHERE ${rowFilter}`);
     }
   }
-  
+
   return sql;
 };

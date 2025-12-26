@@ -30,7 +30,7 @@ describe('Insights Integration Tests with Demo Data', () => {
       });
 
       expect(result.anomalies.length).toBeGreaterThan(0);
-      
+
       const highAnomaly = result.anomalies.find(a => a.value === 120);
       expect(highAnomaly).toBeDefined();
       expect(highAnomaly?.severity).toBeDefined();
@@ -45,7 +45,7 @@ describe('Insights Integration Tests with Demo Data', () => {
     it('should analyze recruitment drivers', () => {
       const demoFeatures = {
         job_postings: [10, 15, 12, 18, 20, 22, 25, 28, 30, 32],
-        response_rate: [0.3, 0.35, 0.32, 0.38, 0.40, 0.42, 0.45, 0.48, 0.50, 0.52],
+        response_rate: [0.3, 0.35, 0.32, 0.38, 0.4, 0.42, 0.45, 0.48, 0.5, 0.52],
         avg_salary_offered: [75000, 76000, 75500, 77000, 78000, 79000, 80000, 81000, 82000, 83000],
         time_to_respond: [2.5, 2.3, 2.4, 2.1, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5],
         facility_rating: [4.2, 4.2, 4.3, 4.3, 4.4, 4.4, 4.5, 4.5, 4.6, 4.6],
@@ -76,15 +76,15 @@ describe('Insights Integration Tests with Demo Data', () => {
 
     it('should handle weekly seasonal patterns', () => {
       const weeklyPattern: TimeSeriesPoint[] = [];
-      
+
       for (let week = 0; week < 8; week++) {
         for (let day = 0; day < 7; day++) {
           const isWeekend = day === 5 || day === 6;
           const baseValue = 50;
           const weekendDrop = isWeekend ? -15 : 0;
           const noise = Math.random() * 5 - 2.5;
-          const anomalySpike = (week === 4 && day === 2) ? 50 : 0;
-          
+          const anomalySpike = week === 4 && day === 2 ? 50 : 0;
+
           weeklyPattern.push({
             timestamp: `2024-01-${String(week * 7 + day + 1).padStart(2, '0')}`,
             value: baseValue + weekendDrop + noise + anomalySpike,
@@ -100,7 +100,7 @@ describe('Insights Integration Tests with Demo Data', () => {
       });
 
       expect(result.anomalies.length).toBeGreaterThan(0);
-      
+
       const anomalyValue = result.anomalies.find(a => a.value > 95);
       expect(anomalyValue).toBeDefined();
     });
@@ -125,8 +125,8 @@ describe('Insights Integration Tests with Demo Data', () => {
       });
 
       expect(result.anomalies.length).toBeGreaterThan(0);
-      
-      const lowComplianceAnomalies = result.anomalies.filter(a => a.value < 0.90);
+
+      const lowComplianceAnomalies = result.anomalies.filter(a => a.value < 0.9);
       expect(lowComplianceAnomalies.length).toBeGreaterThan(0);
     });
 
@@ -138,7 +138,9 @@ describe('Insights Integration Tests with Demo Data', () => {
         time_to_placement: [21, 20, 22, 19, 18, 17, 18, 16, 15, 14],
       };
 
-      const revenueTarget = [125000, 182000, 153000, 243000, 280000, 348000, 313500, 420000, 465000, 576000];
+      const revenueTarget = [
+        125000, 182000, 153000, 243000, 280000, 348000, 313500, 420000, 465000, 576000,
+      ];
 
       const result = mlService.analyzeDrivers(revenueFeatures, revenueTarget, {
         method: 'importance',
@@ -183,14 +185,14 @@ describe('Insights Integration Tests with Demo Data', () => {
 
     it('should detect sudden trend changes', () => {
       const trendChangeData: TimeSeriesPoint[] = [];
-      
+
       for (let i = 0; i < 15; i++) {
         trendChangeData.push({
           timestamp: `2024-01-${String(i + 1).padStart(2, '0')}`,
           value: 100 + i * 2,
         });
       }
-      
+
       for (let i = 15; i < 30; i++) {
         trendChangeData.push({
           timestamp: `2024-01-${String(i + 1).padStart(2, '0')}`,

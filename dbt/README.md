@@ -5,6 +5,7 @@ This directory contains a lightweight dbt project for analytics transformations.
 ## When to Use dbt
 
 Use this dbt project when you need:
+
 - Complex data transformations beyond simple aggregations
 - Data quality testing
 - Documentation generation
@@ -94,13 +95,15 @@ analytics/dbt/
 ### Staging Models (`stg_*.sql`)
 
 Clean and prepare raw data:
+
 - `stg_applications.sql` - Application data cleaning
-- `stg_invoices.sql` - Invoice data cleaning  
+- `stg_invoices.sql` - Invoice data cleaning
 - `stg_outreach.sql` - Outreach data cleaning
 
 ### KPI Models (`*_kpis.sql`)
 
 Calculate analytics metrics:
+
 - `pipeline_kpis.sql` - Recruitment pipeline metrics
 - `compliance_kpis.sql` - Compliance and violation tracking
 - `revenue_kpis.sql` - Revenue and financial metrics
@@ -112,6 +115,7 @@ Calculate analytics metrics:
 ### Option 1: dbt Only (Recommended for Analytics Teams)
 
 Use dbt as the primary analytics engine:
+
 - Raw data → dbt transformations → Analytics tables
 - Application queries dbt-generated tables
 - Full dbt feature set (tests, docs, etc.)
@@ -119,6 +123,7 @@ Use dbt as the primary analytics engine:
 ### Option 2: Hybrid Approach
 
 Use both PostgreSQL views and dbt:
+
 - PostgreSQL views for real-time metrics
 - dbt for complex historical analysis
 - Application uses both data sources
@@ -126,6 +131,7 @@ Use both PostgreSQL views and dbt:
 ### Option 3: PostgreSQL Views Only (Default)
 
 Skip dbt entirely:
+
 - Use built-in PostgreSQL materialized views
 - Simpler deployment and maintenance
 - Good for basic analytics needs
@@ -160,6 +166,7 @@ dbt docs serve
 ```
 
 This creates:
+
 - Data lineage diagrams
 - Column documentation
 - Model relationships
@@ -168,6 +175,7 @@ This creates:
 ## Environment Configuration
 
 ### Development
+
 ```yaml
 # profiles.yml
 dev:
@@ -178,6 +186,7 @@ dev:
 ```
 
 ### Production
+
 ```yaml
 # profiles.yml
 prod:
@@ -202,11 +211,11 @@ Add custom macros in `macros/` directory:
 ```sql
 # macros/hipaa_compliance.sql
 {% macro hipaa_redaction(column_name) %}
-  case 
-    when current_setting('hipaa.mode', true) = 'true' 
-         and not has_pii_permission() 
-    then '[REDACTED]' 
-    else {{ column_name }} 
+  case
+    when current_setting('hipaa.mode', true) = 'true'
+         and not has_pii_permission()
+    then '[REDACTED]'
+    else {{ column_name }}
   end
 {% endmacro %}
 ```
@@ -214,12 +223,14 @@ Add custom macros in `macros/` directory:
 ## Scheduling
 
 Schedule dbt runs using:
+
 - Airflow
 - dbt Cloud
 - Cron jobs
 - GitHub Actions
 
 Example cron job:
+
 ```bash
 # Run dbt every hour
 0 * * * * cd /path/to/analytics/dbt && dbt run --profiles-dir . --target prod

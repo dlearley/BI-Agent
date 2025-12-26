@@ -1,12 +1,12 @@
-import { 
-  ForecastRequest, 
-  ForecastResponse, 
-  ForecastScenario, 
-  ForecastModel, 
+import {
+  ForecastRequest,
+  ForecastResponse,
+  ForecastScenario,
+  ForecastModel,
   ForecastMetric,
   BacktestResults,
   ForecastPoint,
-  ForecastAssumptions
+  ForecastAssumptions,
 } from '../types';
 import { redis } from '../config/redis';
 import { db } from '../config/database';
@@ -25,11 +25,11 @@ export class ForecastService {
     try {
       // Generate unique forecast ID
       const forecastId = uuidv4();
-      
+
       // Call ML service
       const mlResponse = await this.callMLService({
         ...request,
-        id: forecastId
+        id: forecastId,
       });
 
       // Cache the forecast
@@ -54,9 +54,12 @@ export class ForecastService {
       }
 
       // Get from database
-      const forecast = await db.query(`
+      const forecast = await db.query(
+        `
         SELECT * FROM forecasts WHERE id = $1
-      `, [forecastId]);
+      `,
+        [forecastId]
+      );
 
       if (forecast.length === 0) {
         return null;
@@ -73,8 +76,8 @@ export class ForecastService {
         metadata: {
           createdAt: forecastData.created_at,
           modelAccuracy: forecastData.model_accuracy,
-          dataPoints: forecastData.data_points
-        }
+          dataPoints: forecastData.data_points,
+        },
       };
 
       // Cache for future requests
@@ -88,8 +91,8 @@ export class ForecastService {
   }
 
   async createScenario(
-    forecastId: string, 
-    name: string, 
+    forecastId: string,
+    name: string,
     description: string | undefined,
     assumptions: ForecastAssumptions,
     createdBy: string,
@@ -97,7 +100,7 @@ export class ForecastService {
   ): Promise<ForecastScenario> {
     try {
       const scenarioId = uuidv4();
-      
+
       // Verify forecast exists
       const forecast = await this.getForecast(forecastId);
       if (!forecast) {
@@ -105,10 +108,21 @@ export class ForecastService {
       }
 
       // Save scenario to database
-      await db.query(`
+      await db.query(
+        `
         INSERT INTO forecast_scenarios (id, name, description, forecast_id, assumptions, created_by, is_report)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [scenarioId, name, description, forecastId, JSON.stringify(assumptions), createdBy, isReport]);
+      `,
+        [
+          scenarioId,
+          name,
+          description,
+          forecastId,
+          JSON.stringify(assumptions),
+          createdBy,
+          isReport,
+        ]
+      );
 
       const scenario: ForecastScenario = {
         id: scenarioId,
@@ -118,7 +132,7 @@ export class ForecastService {
         assumptions,
         createdAt: new Date().toISOString(),
         createdBy,
-        isReport
+        isReport,
       };
 
       return scenario;
@@ -130,12 +144,15 @@ export class ForecastService {
 
   async getScenarios(userId: string, includeReports: boolean = false): Promise<ForecastScenario[]> {
     try {
-      const result = await db.query(`
+      const result = await db.query(
+        `
         SELECT * FROM forecast_scenarios 
         WHERE created_by = $1 
         AND ($2 = true OR is_report = false)
         ORDER BY created_at DESC
-      `, [userId, includeReports]);
+      `,
+        [userId, includeReports]
+      );
 
       return result.map((row: any) => ({
         id: row.id,
@@ -145,7 +162,7 @@ export class ForecastService {
         assumptions: JSON.parse(row.assumptions),
         createdAt: row.created_at,
         createdBy: row.created_by,
-        isReport: row.is_report
+        isReport: row.is_report,
       }));
     } catch (error) {
       console.error('Error getting scenarios:', error);
@@ -161,22 +178,24 @@ export class ForecastService {
     return Object.values(ForecastModel);
   }
 
-  private async callMLService(request: ForecastRequest & { id: string }): Promise<ForecastResponse> {
+  private async callMLService(
+    request: ForecastRequest & { id: string }
+  ): Promise<ForecastResponse> {
     const response = await fetch(`${this.mlServiceUrl}/forecast`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(request),
-      signal: AbortSignal.timeout(this.mlServiceTimeout)
+      signal: AbortSignal.timeout(this.mlServiceTimeout),
     });
 
     if (!response.ok) {
       throw new Error(`ML service error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json() as any;
-    
+    const data = (await response.json()) as any;
+
     // Transform ML service response to our format
     return {
       id: request.id,
@@ -188,43 +207,46 @@ export class ForecastService {
       metadata: {
         createdAt: new Date().toISOString(),
         modelAccuracy: data.modelAccuracy || 0,
-        dataPoints: data.dataPoints || 0
-      }
+        dataPoints: data.dataPoints || 0,
+      },
     };
   }
 
   private async cacheForecast(forecastId: string, forecast: ForecastResponse): Promise<void> {
     await redis.set(
-      `forecast:${forecastId}`, 
+      `forecast:${forecastId}`,
       forecast,
       3600 // Cache for 1 hour
     );
   }
 
   private async saveForecastToDatabase(
-    forecastId: string, 
-    request: ForecastRequest, 
+    forecastId: string,
+    request: ForecastRequest,
     response: ForecastResponse
   ): Promise<void> {
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO forecasts (
         id, metric, model, predictions, backtest, assumptions, 
         model_accuracy, data_points, start_date, end_date, horizon, frequency
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-    `, [
-      forecastId,
-      request.metric,
-      request.model,
-      JSON.stringify(response.predictions),
-      response.backtest ? JSON.stringify(response.backtest) : null,
-      JSON.stringify(request.assumptions || {}),
-      response.metadata.modelAccuracy,
-      response.metadata.dataPoints,
-      request.startDate,
-      request.endDate,
-      request.horizon,
-      request.frequency
-    ]);
+    `,
+      [
+        forecastId,
+        request.metric,
+        request.model,
+        JSON.stringify(response.predictions),
+        response.backtest ? JSON.stringify(response.backtest) : null,
+        JSON.stringify(request.assumptions || {}),
+        response.metadata.modelAccuracy,
+        response.metadata.dataPoints,
+        request.startDate,
+        request.endDate,
+        request.horizon,
+        request.frequency,
+      ]
+    );
   }
 }
 

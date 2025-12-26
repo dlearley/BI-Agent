@@ -1,18 +1,16 @@
 import { TimeSeriesPoint, AnomalyResult, FeatureImportance, DriversResult } from '../types';
 
 export class MLService {
-  detectAnomalies(data: TimeSeriesPoint[], options: {
-    method?: 'esd' | 'zscore';
-    seasonalPeriod?: number;
-    threshold?: number;
-    alpha?: number;
-  } = {}): AnomalyResult {
-    const {
-      method = 'esd',
-      seasonalPeriod = 7,
-      threshold = 3,
-      alpha = 0.05,
-    } = options;
+  detectAnomalies(
+    data: TimeSeriesPoint[],
+    options: {
+      method?: 'esd' | 'zscore';
+      seasonalPeriod?: number;
+      threshold?: number;
+      alpha?: number;
+    } = {}
+  ): AnomalyResult {
+    const { method = 'esd', seasonalPeriod = 7, threshold = 3, alpha = 0.05 } = options;
 
     if (data.length === 0) {
       return {
@@ -86,11 +84,11 @@ export class MLService {
     const workingValues = [...values];
 
     const n = workingData.length;
-    
+
     for (let i = 0; i < Math.min(maxAnomalies, Math.floor(n / 2)); i++) {
       const mean = this.mean(workingData);
       const stdDev = this.standardDeviation(workingData, mean);
-      
+
       if (stdDev === 0) break;
 
       let maxDeviation = 0;
@@ -219,16 +217,19 @@ export class MLService {
 
     if (p < pLow) {
       q = Math.sqrt(-2 * Math.log(p));
-      result = (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+      result =
+        (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
         ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
     } else if (p <= pHigh) {
       q = p - 0.5;
       r = q * q;
-      result = (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q /
+      result =
+        ((((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q) /
         (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1);
     } else {
       q = Math.sqrt(-2 * Math.log(1 - p));
-      result = -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+      result =
+        -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
         ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
     }
 
@@ -329,7 +330,7 @@ export class MLService {
     const correlation = Math.abs(this.pearsonCorrelation(feature, target));
     const variance = this.variance(feature);
     const normalizedVariance = variance / (1 + variance);
-    
+
     return correlation * (0.7 + 0.3 * normalizedVariance);
   }
 
@@ -337,9 +338,9 @@ export class MLService {
     const correlation = this.pearsonCorrelation(feature, target);
     const featureStdDev = this.standardDeviation(feature, this.mean(feature));
     const targetStdDev = this.standardDeviation(target, this.mean(target));
-    
+
     if (targetStdDev === 0) return 0;
-    
+
     return correlation * (featureStdDev / targetStdDev);
   }
 

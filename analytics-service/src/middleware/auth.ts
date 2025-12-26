@@ -21,7 +21,7 @@ export const authenticate = async (
 
     const token = authHeader.substring(7);
     const decoded = jwt.verify(token, config.jwt.secret) as any;
-    
+
     // In a real application, you would fetch the user from the database
     // For now, we'll assume the decoded token contains the user info
     const user: User = {
@@ -75,7 +75,11 @@ export const requireRole = (roles: UserRole[]) => {
   };
 };
 
-export const facilityScope = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const facilityScope = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
   if (!req.user) {
     res.status(401).json({ error: 'Authentication required' });
     return;

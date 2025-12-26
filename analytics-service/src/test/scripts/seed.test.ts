@@ -23,10 +23,9 @@ describe('Seed Service', () => {
       expect(organizationId).toBeDefined();
       expect(typeof organizationId).toBe('string');
 
-      const org = await db.queryOne<any>(
-        'SELECT * FROM organizations WHERE id = $1',
-        [organizationId]
-      );
+      const org = await db.queryOne<any>('SELECT * FROM organizations WHERE id = $1', [
+        organizationId,
+      ]);
 
       expect(org).toBeDefined();
       expect(org?.name).toBe('Demo Ecommerce Inc.');
@@ -59,7 +58,7 @@ describe('Seed Service', () => {
       );
 
       expect(connectors.length).toBeGreaterThanOrEqual(3);
-      
+
       const postgresConnector = connectors.find((c: any) => c.type === 'postgresql');
       expect(postgresConnector).toBeDefined();
       expect(postgresConnector.status).toBe('active');
@@ -79,13 +78,12 @@ describe('Seed Service', () => {
       expect(queryIds).toHaveLength(5);
       expect(queryIds.every(id => typeof id === 'string')).toBe(true);
 
-      const queries = await db.query(
-        'SELECT * FROM saved_queries WHERE organization_id = $1',
-        [organizationId]
-      );
+      const queries = await db.query('SELECT * FROM saved_queries WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(queries.length).toBeGreaterThanOrEqual(5);
-      
+
       // Verify query types
       const queryTypes = queries.map((q: any) => q.query_type);
       expect(queryTypes).toContain('kpi');
@@ -94,10 +92,9 @@ describe('Seed Service', () => {
     });
 
     it('should create queries with valid SQL', async () => {
-      const queries = await db.query(
-        'SELECT * FROM saved_queries WHERE organization_id = $1',
-        [organizationId]
-      );
+      const queries = await db.query('SELECT * FROM saved_queries WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       for (const query of queries) {
         expect(query.query_text).toBeTruthy();
@@ -118,19 +115,17 @@ describe('Seed Service', () => {
 
       expect(dashboardIds).toHaveLength(3);
 
-      const dashboards = await db.query(
-        'SELECT * FROM dashboards WHERE organization_id = $1',
-        [organizationId]
-      );
+      const dashboards = await db.query('SELECT * FROM dashboards WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(dashboards.length).toBeGreaterThanOrEqual(3);
     });
 
     it('should create marketing, sales, and finance dashboards', async () => {
-      const dashboards = await db.query(
-        'SELECT * FROM dashboards WHERE organization_id = $1',
-        [organizationId]
-      );
+      const dashboards = await db.query('SELECT * FROM dashboards WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       const types = dashboards.map((d: any) => d.type);
       expect(types).toContain('marketing');
@@ -139,25 +134,23 @@ describe('Seed Service', () => {
     });
 
     it('should mark dashboards as templates', async () => {
-      const dashboards = await db.query(
-        'SELECT * FROM dashboards WHERE organization_id = $1',
-        [organizationId]
-      );
+      const dashboards = await db.query('SELECT * FROM dashboards WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       const allTemplates = dashboards.every((d: any) => d.is_template === true);
       expect(allTemplates).toBe(true);
     });
 
     it('should have valid layout configuration', async () => {
-      const dashboards = await db.query(
-        'SELECT * FROM dashboards WHERE organization_id = $1',
-        [organizationId]
-      );
+      const dashboards = await db.query('SELECT * FROM dashboards WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       for (const dashboard of dashboards) {
         expect(Array.isArray(dashboard.layout)).toBe(true);
         expect(dashboard.layout.length).toBeGreaterThan(0);
-        
+
         // Check first widget structure
         const widget = dashboard.layout[0];
         expect(widget).toHaveProperty('id');
@@ -180,24 +173,22 @@ describe('Seed Service', () => {
 
       expect(alertIds).toHaveLength(2);
 
-      const alerts = await db.query(
-        'SELECT * FROM alerts WHERE organization_id = $1',
-        [organizationId]
-      );
+      const alerts = await db.query('SELECT * FROM alerts WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(alerts.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should create alerts with valid schedules', async () => {
-      const alerts = await db.query(
-        'SELECT * FROM alerts WHERE organization_id = $1',
-        [organizationId]
-      );
+      const alerts = await db.query('SELECT * FROM alerts WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       for (const alert of alerts) {
         expect(alert.schedule_cron).toBeTruthy();
         expect(alert.is_active).toBe(true);
-        
+
         // Validate cron pattern format
         const cronParts = alert.schedule_cron.split(' ');
         expect(cronParts.length).toBeGreaterThanOrEqual(5);
@@ -205,10 +196,9 @@ describe('Seed Service', () => {
     });
 
     it('should have notification channels configured', async () => {
-      const alerts = await db.query(
-        'SELECT * FROM alerts WHERE organization_id = $1',
-        [organizationId]
-      );
+      const alerts = await db.query('SELECT * FROM alerts WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       for (const alert of alerts) {
         expect(Array.isArray(alert.notification_channels)).toBe(true);
@@ -331,13 +321,12 @@ describe('Seed Service', () => {
     it('should create customers', async () => {
       await seedService.seedEcommerceData();
 
-      const customers = await db.query(
-        'SELECT * FROM customers WHERE organization_id = $1',
-        [organizationId]
-      );
+      const customers = await db.query('SELECT * FROM customers WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(customers.length).toBeGreaterThanOrEqual(10);
-      
+
       const firstCustomer = customers[0];
       expect(firstCustomer.email).toBeTruthy();
       expect(firstCustomer.first_name).toBeTruthy();
@@ -345,16 +334,15 @@ describe('Seed Service', () => {
     });
 
     it('should create products with categories', async () => {
-      const products = await db.query(
-        'SELECT * FROM products WHERE organization_id = $1',
-        [organizationId]
-      );
+      const products = await db.query('SELECT * FROM products WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(products.length).toBeGreaterThanOrEqual(15);
-      
+
       const categories = [...new Set(products.map((p: any) => p.category))];
       expect(categories.length).toBeGreaterThan(1);
-      
+
       for (const product of products) {
         expect(product.name).toBeTruthy();
         expect(product.sku).toBeTruthy();
@@ -363,29 +351,32 @@ describe('Seed Service', () => {
     });
 
     it('should create orders with valid data', async () => {
-      const orders = await db.query(
-        'SELECT * FROM orders WHERE organization_id = $1',
-        [organizationId]
-      );
+      const orders = await db.query('SELECT * FROM orders WHERE organization_id = $1', [
+        organizationId,
+      ]);
 
       expect(orders.length).toBeGreaterThanOrEqual(50);
-      
+
       for (const order of orders) {
         expect(order.order_number).toBeTruthy();
         expect(order.total).toBeGreaterThan(0);
         expect(order.status).toBeTruthy();
-        expect(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'])
-          .toContain(order.status);
+        expect([
+          'pending',
+          'processing',
+          'shipped',
+          'delivered',
+          'cancelled',
+          'refunded',
+        ]).toContain(order.status);
       }
     });
 
     it('should create order items linked to orders and products', async () => {
-      const orderItems = await db.query(
-        'SELECT * FROM order_items'
-      );
+      const orderItems = await db.query('SELECT * FROM order_items');
 
       expect(orderItems.length).toBeGreaterThan(0);
-      
+
       for (const item of orderItems) {
         expect(item.order_id).toBeTruthy();
         expect(item.product_id).toBeTruthy();
@@ -403,7 +394,7 @@ describe('Seed Service', () => {
 
       const firstDate = new Date(orders[0].created_at);
       const lastDate = new Date(orders[orders.length - 1].created_at);
-      
+
       const daysDiff = (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24);
       expect(daysDiff).toBeGreaterThan(1); // Orders should span multiple days
     });
@@ -427,7 +418,7 @@ describe('Seed Service', () => {
       const results = await seedService.verifySeedData();
 
       expect(results.length).toBe(11);
-      
+
       const expectedTables = [
         'organizations',
         'data_connectors',
@@ -439,7 +430,7 @@ describe('Seed Service', () => {
         'customers',
         'products',
         'orders',
-        'order_items'
+        'order_items',
       ];
 
       for (const expectedTable of expectedTables) {
@@ -451,7 +442,7 @@ describe('Seed Service', () => {
 
     it('should have correct record counts', async () => {
       const results = await seedService.verifySeedData();
-      
+
       const getCount = (table: string) => {
         return results.find(r => r.table === table)?.count || 0;
       };
@@ -471,15 +462,14 @@ describe('Seed Service', () => {
   describe('full seed process', () => {
     it('should complete full seed without errors', async () => {
       const newSeedService = new SeedService();
-      
+
       await expect(newSeedService.seed()).resolves.not.toThrow();
     }, 30000); // 30 second timeout for full seed
 
     it('should create demo organization accessible via slug', async () => {
-      const org = await db.queryOne(
-        'SELECT * FROM organizations WHERE slug = $1',
-        ['demo-ecommerce']
-      );
+      const org = await db.queryOne('SELECT * FROM organizations WHERE slug = $1', [
+        'demo-ecommerce',
+      ]);
 
       expect(org).toBeDefined();
       expect(org?.name).toBe('Demo Ecommerce Inc.');

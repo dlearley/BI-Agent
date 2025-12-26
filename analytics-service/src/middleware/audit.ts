@@ -37,18 +37,18 @@ export const auditLogger = (action: string, resource: string) => {
 
     // Override res.json to capture response
     const originalJson = res.json;
-    res.json = function(data: any) {
+    res.json = function (data: any) {
       // Log the audit entry
       logAuditEntry(req, res, data).catch(error => {
         console.error('Failed to log audit entry:', error);
       });
-      
+
       return originalJson.call(this, data);
     };
 
     // Override res.status to capture errors
     const originalStatus = res.status;
-    res.status = function(code: number) {
+    res.status = function (code: number) {
       if (code >= 400) {
         logAuditEntry(req, res, null, `HTTP ${code}`).catch(error => {
           console.error('Failed to log audit entry:', error);
@@ -94,7 +94,8 @@ export const logAuditEntry = async (
     };
 
     // Insert into audit log table
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO audit_logs (
         id, user_id, user_email, user_role, action, resource, resource_id,
         timestamp, ip_address, user_agent, facility_id, details, success,
@@ -102,24 +103,25 @@ export const logAuditEntry = async (
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
       )
-    `, [
-      uuidv4(),
-      auditEntry.userId,
-      auditEntry.userEmail,
-      auditEntry.userRole,
-      auditEntry.action,
-      auditEntry.resource,
-      auditEntry.resourceId,
-      auditEntry.timestamp,
-      auditEntry.ipAddress,
-      auditEntry.userAgent,
-      auditEntry.facilityId,
-      JSON.stringify(auditEntry.details),
-      auditEntry.success,
-      auditEntry.errorMessage,
-      auditEntry.complianceFramework,
-    ]);
-
+    `,
+      [
+        uuidv4(),
+        auditEntry.userId,
+        auditEntry.userEmail,
+        auditEntry.userRole,
+        auditEntry.action,
+        auditEntry.resource,
+        auditEntry.resourceId,
+        auditEntry.timestamp,
+        auditEntry.ipAddress,
+        auditEntry.userAgent,
+        auditEntry.facilityId,
+        JSON.stringify(auditEntry.details),
+        auditEntry.success,
+        auditEntry.errorMessage,
+        auditEntry.complianceFramework,
+      ]
+    );
   } catch (error) {
     console.error('Audit logging failed:', error);
     // Don't throw - audit logging failures shouldn't break the main flow
@@ -132,7 +134,7 @@ export const createSecurityContext = (
 ): SecurityContext => {
   const user = req.user!;
   const preset = config.governance.compliancePresets[complianceFramework];
-  
+
   return {
     user,
     complianceFramework,
@@ -160,7 +162,7 @@ const sanitizeRequestBody = (body: any): any => {
 
   const sanitized = { ...body };
   const sensitiveFields = config.governance.auditLog.sensitiveFields;
-  
+
   for (const field of sensitiveFields) {
     if (field in sanitized) {
       sanitized[field] = '[REDACTED]';
@@ -177,7 +179,7 @@ const sanitizeResponseData = (data: any): any => {
 
   // For response data, we'll just flag if it contains sensitive info
   const sensitiveFields = config.governance.auditLog.sensitiveFields;
-  const containsSensitive = sensitiveFields.some(field => 
+  const containsSensitive = sensitiveFields.some(field =>
     JSON.stringify(data).toLowerCase().includes(field.toLowerCase())
   );
 
@@ -192,16 +194,19 @@ const sanitizeResponseData = (data: any): any => {
 export const cleanupAuditLogs = async (): Promise<void> => {
   try {
     const frameworks: Array<'hipaa' | 'gdpr' | 'soc2'> = ['hipaa', 'gdpr', 'soc2'];
-    
+
     for (const framework of frameworks) {
       const retentionDays = config.governance.auditLog.retention[framework];
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-      await db.query(`
+      await db.query(
+        `
         DELETE FROM audit_logs 
         WHERE compliance_framework = $1 AND timestamp < $2
-      `, [framework, cutoffDate]);
+      `,
+        [framework, cutoffDate]
+      );
     }
   } catch (error) {
     console.error('Failed to cleanup audit logs:', error);

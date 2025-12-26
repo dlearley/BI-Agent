@@ -13,7 +13,7 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: service
         replacement: analytics-service
-  
+
   # Scrape the OpenTelemetry collector metrics
   - job_name: 'otel-collector'
     metrics_path: /metrics
