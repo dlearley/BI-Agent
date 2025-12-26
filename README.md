@@ -10,43 +10,81 @@ This repository contains the full analytics/business intelligence stack that was
 
 ```
 bi-agent/
-├── analytics-service/     # Main analytics API service
+├── analytics-service/     # Main analytics API service (Node.js/Express)
 │   ├── src/              # TypeScript source code
 │   ├── package.json      # Service dependencies
 │   ├── Dockerfile        # Container configuration
-│   └── docker-compose.yml
-├── dbt/                  # dbt analytics project
+│   ├── docker-compose.yml # Service composition (analytics only)
+│   └── logs/             # Application logs
+├── ml-service/           # ML Service (FastAPI/Python)
+│   ├── main.py           # FastAPI application
+│   ├── Dockerfile        # Container configuration
+│   ├── requirements.txt   # Python dependencies
+│   └── logs/             # Service logs
+├── web/                  # Web Frontend (Next.js/React)
+│   ├── pages/            # Next.js pages
+│   ├── Dockerfile        # Container configuration
+│   ├── package.json      # Dependencies
+│   └── next.config.js    # Next.js configuration
+├── celery-service/       # Background Jobs (Python/Celery)
+│   ├── tasks.py          # Task definitions
+│   ├── config.py         # Celery configuration
+│   ├── Dockerfile        # Container configuration
+│   ├── requirements.txt   # Python dependencies
+│   └── logs/             # Task logs
+├── dbt/                  # dbt Analytics Project
 │   ├── models/           # Analytics models
 │   ├── macros/           # Custom dbt macros
 │   └── dbt_project.yml   # dbt configuration
-├── jobs/                 # Background jobs and scripts
+├── observability/        # Observability Stack Configuration
+│   ├── otel-collector-config.yml  # OpenTelemetry configuration
+│   ├── prometheus.yml    # Prometheus configuration
+│   └── grafana/          # Grafana dashboards and provisioning
+├── jobs/                 # Background Jobs and Setup Scripts
 │   ├── refresh/          # SQL refresh scripts
 │   └── setup.sh          # Environment setup
-└── package.json          # Workspace configuration
+├── scripts/              # Utility Scripts
+│   ├── setup-local-env.sh    # Local environment setup
+│   ├── health-check.sh       # Service health verification
+│   ├── bootstrap-db.sh       # Database bootstrap
+│   └── init-pgvector.sql     # pgvector initialization
+├── docker-compose.yml    # Complete stack orchestration
+├── .env.example          # Environment configuration template
+├── DOCKER_COMPOSE.md     # Docker Compose documentation
+├── package.json          # Workspace configuration
+└── README.md             # This file
 ```
 
 ## Features
 
-- **PostgreSQL Analytics**: Materialized views and standard views for KPI calculations
+- **PostgreSQL 15 Analytics**: Materialized views and standard views for KPI calculations with pgvector
 - **REST API**: Express.js API with role-based access control (RBAC)
+- **ML Service**: FastAPI-based machine learning service for predictions and model training
+- **Web Frontend**: Next.js web interface for dashboard and analytics visualization
+- **Background Jobs**: Celery workers and scheduler for async task processing
+- **S3-Compatible Storage**: MinIO for storing models, datasets, and logs
 - **Redis Caching**: Intelligent caching for improved performance
 - **BullMQ Jobs**: Scheduled and manual refresh strategies
 - **HIPAA Compliance**: PII redaction and minimum threshold enforcement
 - **OpenTelemetry Observability**: Tracing, metrics, and dashboards with Jaeger, Prometheus, and Grafana
 - **dbt Integration**: Transformations with dbt for analytics engineering
 - **TypeScript**: Full type safety throughout the application
+- **Docker Compose Orchestration**: Complete stack with all services in one command
 
 ## Architecture
 
 ### Core Components
 
-1. **Analytics Service** (`analytics-service/`): Main API service for analytics endpoints
-2. **Database Layer**: PostgreSQL with materialized views for KPIs
-3. **Cache Layer**: Redis for performance optimization
-4. **Job Queue**: BullMQ for background processing
-5. **Analytics Engine**: dbt for data transformations
-6. **Refresh Jobs**: Automated and manual data refresh strategies
-7. **Observability Stack**: OpenTelemetry, Jaeger, Prometheus, and Grafana
+1. **Analytics Service** (`analytics-service/`): Main API service for analytics endpoints (Node.js/Express)
+2. **ML Service** (`ml-service/`): Machine learning service for predictions and training (FastAPI)
+3. **Web Frontend** (`web/`): User interface for dashboards and analytics (Next.js)
+4. **Database Layer**: PostgreSQL 15 with pgvector for vector embeddings and materialized views for KPIs
+5. **Cache Layer**: Redis for performance optimization and job queue
+6. **Object Storage**: MinIO for S3-compatible storage of models, datasets, and logs
+7. **Background Jobs**: Celery workers and beat scheduler for async task processing
+8. **Analytics Engine**: dbt for data transformations
+9. **Refresh Jobs**: Automated and manual data refresh strategies
+10. **Observability Stack**: OpenTelemetry collector, Jaeger for tracing, Prometheus for metrics, and Grafana for visualization
 
 ### KPIs Provided
 
@@ -236,8 +274,76 @@ pnpm test:coverage
 
 ## Docker Support
 
+### Full Stack Orchestration
+
+The project includes a comprehensive Docker Compose stack that orchestrates all services:
+
 ```bash
-# Build and start all services
+# Setup local environment
+./scripts/setup-local-env.sh
+
+# Start all services
+docker-compose up -d
+
+# Check service health
+./scripts/health-check.sh
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### Services Included
+
+- **PostgreSQL 15** with pgvector extension for vector embeddings
+- **Redis** for caching and job queue
+- **MinIO** S3-compatible object storage
+- **Analytics API** (Node.js/Express)
+- **ML Service** (FastAPI) for predictions and model training
+- **Web Frontend** (Next.js)
+- **Celery Worker & Beat** for background jobs and scheduling
+- **Prometheus** for metrics collection
+- **Grafana** for visualization (http://localhost:3002)
+- **Jaeger** for distributed tracing (http://localhost:16686)
+- **OpenTelemetry Collector** for telemetry aggregation
+
+### Quick Access
+
+After `docker-compose up -d`:
+
+- **Analytics API**: http://localhost:3000
+- **Web UI**: http://localhost:3001
+- **ML Service**: http://localhost:8000
+- **Grafana Dashboards**: http://localhost:3002 (admin/admin)
+- **Jaeger Tracing**: http://localhost:16686
+- **Prometheus**: http://localhost:9090
+- **MinIO Console**: http://localhost:9001 (minioadmin/minioadmin)
+
+### Configuration
+
+Edit `.env` file before running `docker-compose up`:
+
+```bash
+# Database
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=analytics_db
+
+# Analytics
+JWT_SECRET=your-secret-key
+
+# Observability
+GRAFANA_PASSWORD=admin
+```
+
+For detailed Docker Compose documentation, see [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md).
+
+### Analytics Service Docker
+
+```bash
+# Build and start individual analytics service
 cd analytics-service
 pnpm docker:up
 
