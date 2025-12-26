@@ -18,33 +18,6 @@ const config: AppConfig = {
     password: process.env.REDIS_PASSWORD,
     db: parseInt(process.env.REDIS_DB || '0'),
   },
-  kafka: {
-    clientId: process.env.KAFKA_CLIENT_ID || 'analytics-crm-ingestion',
-    brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
-    ssl: process.env.NODE_ENV === 'production',
-    sasl: {
-      mechanism: process.env.KAFKA_SASL_MECHANISM || 'plain',
-      username: process.env.KAFKA_USERNAME,
-      password: process.env.KAFKA_PASSWORD,
-    },
-    schemaRegistry: {
-      url: process.env.SCHEMA_REGISTRY_URL || 'http://localhost:8081',
-      username: process.env.SCHEMA_REGISTRY_USERNAME,
-      password: process.env.SCHEMA_REGISTRY_PASSWORD,
-    },
-    topics: {
-      crmEvents: process.env.CRM_EVENTS_TOPIC || 'crm.events',
-      crmLeads: process.env.CRM_LEADS_TOPIC || 'crm.leads',
-      crmContacts: process.env.CRM_CONTACTS_TOPIC || 'crm.contacts',
-      crmOpportunities: process.env.CRM_OPPORTUNITIES_TOPIC || 'crm.opportunities',
-    },
-    consumer: {
-      groupId: process.env.KAFKA_CONSUMER_GROUP_ID || 'analytics-crm-consumer',
-      sessionTimeout: parseInt(process.env.KAFKA_SESSION_TIMEOUT || '30000'),
-      heartbeatInterval: parseInt(process.env.KAFKA_HEARTBEAT_INTERVAL || '3000'),
-      maxWaitTimeInMs: parseInt(process.env.KAFKA_MAX_WAIT_TIME || '5000'),
-    },
-  },
   jwt: {
     secret: process.env.JWT_SECRET || 'fallback-secret',
     expiresIn: process.env.JWT_EXPIRES_IN || '24h',
@@ -60,6 +33,31 @@ const config: AppConfig = {
   mlService: {
     url: process.env.ML_SERVICE_URL || 'http://localhost:8000',
     timeout: parseInt(process.env.ML_SERVICE_TIMEOUT || '30000'),
+  },
+  alerts: {
+    enabled: process.env.ALERTS_ENABLED !== 'false',
+    evaluationInterval: parseInt(process.env.ALERTS_EVALUATION_INTERVAL || '300000'), // 5 minutes
+    maxRetries: parseInt(process.env.ALERTS_MAX_RETRIES || '3'),
+  },
+  reports: {
+    enabled: process.env.REPORTS_ENABLED !== 'false',
+    storageDir: process.env.REPORTS_STORAGE_DIR || './reports',
+    maxFileSizeMB: parseInt(process.env.REPORTS_MAX_FILE_SIZE_MB || '10'),
+  },
+  notifications: {
+    smtp: {
+      host: process.env.SMTP_HOST || 'localhost',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      user: process.env.SMTP_USER,
+      password: process.env.SMTP_PASSWORD,
+      from: process.env.SMTP_FROM || 'analytics@example.com',
+    },
+  },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+    maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '2000'),
   },
   governance: {
     auditLog: {

@@ -6,9 +6,11 @@ import compression from 'compression';
 import { db } from './config/database';
 import { redis } from './config/redis';
 import { queueService } from './services/queue.service';
-import { crmIngestionService } from './services/crm-ingestion.service';
+import { initializeAlertJobs } from './jobs/alerts.job';
+import { initializeReportJobs } from './jobs/reports.job';
 import analyticsRoutes from './routes/analytics';
-import crmIngestionRoutes from './routes/crm-ingestion';
+import alertsRoutes from './routes/alerts';
+import reportsRoutes from './routes/reports';
 import config from './config';
 import logger from './utils/logger';
 import { requestContextMiddleware } from './observability/request-context';
@@ -68,7 +70,8 @@ app.get('/health', async (req, res) => {
 // API routes
 const apiVersion = config.apiVersion || 'v1';
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
-app.use(`/api/${apiVersion}/crm-ingestion`, crmIngestionRoutes);
+app.use(`/api/${apiVersion}/alerts`, alertsRoutes);
+app.use(`/api/${apiVersion}/reports`, reportsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -110,14 +113,22 @@ async function startServer(): Promise<void> {
       throw new Error('Redis connection failed');
     }
 
+    // Initialize background jobs
+    await initializeAlertJobs();
+    await initializeReportJobs();
+
     // Start the server
     const port = config.port || 3000;
     const server = app.listen(port, () => {
       logger.info('🚀 Analytics backend server running', {
         port,
         apiUrl: `http://localhost:${port}/api/${apiVersion}/analytics`,
+        alertsUrl: `http://localhost:${port}/api/${apiVersion}/alerts`,
+        reportsUrl: `http://localhost:${port}/api/${apiVersion}/reports`,
         metricsUrl: `http://localhost:${port}/metrics`,
         hipaaMode: config.hipaa.enabled ? 'ENABLED' : 'DISABLED',
+        alertsEnabled: config.alerts.enabled ? 'ENABLED' : 'DISABLED',
+        reportsEnabled: config.reports.enabled ? 'ENABLED' : 'DISABLED',
         refreshInterval: config.analytics.refreshInterval,
       });
     });
@@ -130,7 +141,6 @@ async function startServer(): Promise<void> {
         logger.info('HTTP server closed');
         
         try {
-          await crmIngestionService.stop();
           await queueService.close();
           logger.info('Queue service closed');
           

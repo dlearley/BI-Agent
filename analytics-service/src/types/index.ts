@@ -117,38 +117,9 @@ export interface RedisConfig {
   db?: number;
 }
 
-export interface KafkaConfig {
-  clientId: string;
-  brokers: string[];
-  ssl: boolean;
-  sasl: {
-    mechanism: string;
-    username?: string;
-    password?: string;
-  };
-  schemaRegistry: {
-    url: string;
-    username?: string;
-    password?: string;
-  };
-  topics: {
-    crmEvents: string;
-    crmLeads: string;
-    crmContacts: string;
-    crmOpportunities: string;
-  };
-  consumer: {
-    groupId: string;
-    sessionTimeout: number;
-    heartbeatInterval: number;
-    maxWaitTimeInMs: number;
-  };
-}
-
 export interface AppConfig {
   database: DatabaseConfig;
   redis: RedisConfig;
-  kafka: KafkaConfig;
   jwt: {
     secret: string;
     expiresIn: string;
@@ -164,6 +135,31 @@ export interface AppConfig {
   mlService: {
     url: string;
     timeout: number;
+  };
+  alerts: {
+    enabled: boolean;
+    evaluationInterval: number;
+    maxRetries: number;
+  };
+  reports: {
+    enabled: boolean;
+    storageDir: string;
+    maxFileSizeMB: number;
+  };
+  notifications: {
+    smtp: {
+      host: string;
+      port: number;
+      secure: boolean;
+      user?: string;
+      password?: string;
+      from: string;
+    };
+  };
+  openai: {
+    apiKey?: string;
+    model: string;
+    maxTokens: number;
   };
   governance: GovernanceConfig;
   port?: number;
@@ -251,6 +247,8 @@ export interface ForecastScenario {
   createdAt: string;
   createdBy: string;
   isReport: boolean;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -313,6 +311,8 @@ export interface InsightsReport {
   };
   trends: TrendAnalysis;
   narrative: string;
+}
+
 export interface GovernanceConfig {
   auditLog: {
     enabled: boolean;
@@ -403,91 +403,161 @@ export interface SecurityContext {
   facilityScope?: string;
 }
 
-// CRM Event Types
-export interface CRMEvent {
-  id: string;
-  eventId: string;
-  eventType: CRMEventType;
-  organizationId: string;
-  timestamp: Date;
-  data: any;
-  metadata?: {
-    source: string;
-    version: string;
-    correlationId?: string;
-  };
+// Alerts and Reports types
+export enum AlertType {
+  THRESHOLD = 'threshold',
+  PERCENT_CHANGE = 'percent_change',
+  ANOMALY = 'anomaly'
 }
 
-export enum CRMEventType {
-  LEAD_CREATED = 'lead.created',
-  LEAD_UPDATED = 'lead.updated',
-  LEAD_CONVERTED = 'lead.converted',
-  CONTACT_CREATED = 'contact.created',
-  CONTACT_UPDATED = 'contact.updated',
-  OPPORTUNITY_CREATED = 'opportunity.created',
-  OPPORTUNITY_UPDATED = 'opportunity.updated',
-  OPPORTUNITY_WON = 'opportunity.won',
-  OPPORTUNITY_LOST = 'opportunity.lost',
+export enum ChannelType {
+  SLACK = 'slack',
+  EMAIL = 'email',
+  WEBHOOK = 'webhook'
 }
 
-export interface CRMLead {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  title?: string;
-  source: string;
-  status: string;
-  score?: number;
-  assignedTo?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  organizationId: string;
+export interface SlackChannelConfig {
+  type: 'slack';
+  webhookUrl: string;
+  channel?: string;
+  username?: string;
+  iconEmoji?: string;
 }
 
-export interface CRMContact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  title?: string;
-  leadId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  organizationId: string;
+export interface EmailChannelConfig {
+  type: 'email';
+  recipients: string[];
+  subject?: string;
+  cc?: string[];
+  bcc?: string[];
 }
 
-export interface CRMOpportunity {
+export interface WebhookChannelConfig {
+  type: 'webhook';
+  url: string;
+  method?: 'POST' | 'PUT';
+  headers?: Record<string, string>;
+}
+
+export type ChannelConfig = SlackChannelConfig | EmailChannelConfig | WebhookChannelConfig;
+
+export interface Alert {
   id: string;
   name: string;
-  leadId?: string;
-  contactId?: string;
-  amount: number;
-  currency: string;
-  stage: string;
-  probability: number;
-  expectedCloseDate: Date;
+  description?: string;
+  metric: string;
+  alertType: AlertType;
+  
+  // Threshold configuration
+  thresholdValue?: number;
+  thresholdOperator?: '>' | '<' | '>=' | '<=' | '=';
+  
+  // Percent change configuration
+  percentChangeValue?: number;
+  percentChangePeriod?: 'daily' | 'weekly' | 'monthly';
+  percentChangeDirection?: 'increase' | 'decrease' | 'any';
+  
+  // Anomaly detection configuration
+  anomalySensitivity?: 'low' | 'medium' | 'high';
+  anomalyLookbackDays?: number;
+  
+  // Evaluation settings
+  evaluationFrequency: 'hourly' | 'daily' | 'weekly';
+  evaluationSchedule: string;
+  
+  // Filter criteria
+  facilityId?: string;
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
+  
+  // Notification channels
+  channels: ChannelConfig[];
+  
+  // State
+  enabled: boolean;
+  lastEvaluatedAt?: Date;
+  lastTriggeredAt?: Date;
+  
+  // Metadata
   createdAt: Date;
   updatedAt: Date;
-  organizationId: string;
+  createdBy: string;
 }
 
-export interface IngestionJobData extends JobData {
-  type: 'crm_ingestion';
-  topic: string;
-  partition?: number;
-  offset?: number;
+export interface AlertNotification {
+  id: string;
+  alertId: string;
+  triggeredAt: Date;
+  metricValue: number;
+  thresholdBreached?: number;
+  channelType: ChannelType;
+  channelConfig: ChannelConfig;
+  recipient?: string;
+  status: 'pending' | 'sent' | 'failed';
+  sentAt?: Date;
+  errorMessage?: string;
+  retryCount: number;
+  details?: Record<string, any>;
 }
 
-export interface IngestionResult extends JobResult {
-  metrics: {
-    eventsProcessed: number;
-    eventsSkipped: number;
-    errors: number;
-    processingTimeMs: number;
-  };
+export interface Report {
+  id: string;
+  name: string;
+  description?: string;
+  reportType: 'weekly_briefing' | 'monthly_summary' | 'custom';
+  schedule: string;
+  metrics: string[];
+  dateRangeType: 'last_week' | 'last_month' | 'custom';
+  includeCharts: boolean;
+  includeNarrative: boolean;
+  facilityId?: string;
+  channels: ChannelConfig[];
+  enabled: boolean;
+  lastGeneratedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+}
+
+export interface ReportGeneration {
+  id: string;
+  reportId: string;
+  generatedAt: Date;
+  dateRangeStart: Date;
+  dateRangeEnd: Date;
+  narrative?: string;
+  charts: ChartSnapshot[];
+  pdfUrl?: string;
+  status: 'pending' | 'sent' | 'failed';
+  sentAt?: Date;
+  recipients: string[];
+  errorMessage?: string;
+  metadata?: Record<string, any>;
+  fileSizeBytes?: number;
+}
+
+export interface ChartSnapshot {
+  type: string;
+  title: string;
+  data: any;
+  imageUrl?: string;
+}
+
+export interface AlertEvaluationResult {
+  alertId: string;
+  triggered: boolean;
+  currentValue: number;
+  previousValue?: number;
+  thresholdBreached?: number;
+  message: string;
+  timestamp: Date;
+}
+
+export interface ReportGenerationRequest {
+  reportId?: string;
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
+  metrics?: string[];
+  facilityId?: string;
+  deliveryChannels?: ChannelConfig[];
 }
