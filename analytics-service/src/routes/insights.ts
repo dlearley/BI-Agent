@@ -4,7 +4,7 @@ import { authenticate, authorize, facilityScope } from '../middleware/auth';
 import { hipaaCompliance } from '../middleware/hipaa';
 import { Permission } from '../types';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authenticate);
 router.use(hipaaCompliance);

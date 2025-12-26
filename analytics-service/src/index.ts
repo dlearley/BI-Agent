@@ -76,6 +76,8 @@ app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
 app.use('/js', express.static(path.join(__dirname, '../public/js')));
 app.use('/forecast.html', express.static(path.join(__dirname, '../public/forecast.html')));
 app.use('/forecast', express.static(path.join(__dirname, '../public/forecast.html')));
+app.use('/dashboard.html', express.static(path.join(__dirname, '../public/dashboard-builder.html')));
+app.use('/dashboard', express.static(path.join(__dirname, '../public/dashboard-builder.html')));
 app.use(`/api/${apiVersion}/insights`, insightsRoutes);
 app.use(`/api/${apiVersion}/governance`, governanceRoutes);
 app.use(`/api/${apiVersion}/dashboard`, dashboardRoutes);

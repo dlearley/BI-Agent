@@ -5,7 +5,7 @@ import { enhancedRBAC, dataExportRestrictions } from '../middleware/rbac';
 import { auditLogger } from '../middleware/audit';
 import { Permission } from '../types';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply authentication to all routes
 router.use(authenticate);

@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Builder - Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interact.js@1.10.19/dist/interact.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e0e6ed;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e0e6ed;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .editor-area {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+        }
+
+        .canvas {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            min-height: 600px;
+            position: relative;
+        }
+
+        .grid-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(0deg, transparent 24%, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.05) 75%, rgba(0, 0, 0, 0.05) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.05) 75%, rgba(0, 0, 0, 0.05) 76%, transparent 77%, transparent);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .widgets-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .widget {
+            position: absolute;
+            background: white;
+            border: 2px solid #e0e6ed;
+            border-radius: 6px;
+            padding: 15px;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s;
+        }
+
+        .widget:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .widget.selected {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e6ed;
+        }
+
+        .widget-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .widget-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: #666;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+
+        .btn-icon:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .panel {
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #e0e6ed;
+            color: #2c3e50;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .list-item {
+            padding: 10px;
+            border: 1px solid #e0e6ed;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .list-item:hover {
+            background: #f9fafb;
+        }
+
+        .list-item.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .kpi-tile {
+            text-align: center;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #e0e6ed;
+            margin-bottom: 15px;
+        }
+
+        .tab {
+            padding: 12px 16px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .cache-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            padding: 4px 8px;
+            background: #f0fdf4;
+            color: #15803d;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+
+        .status-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #ccc;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            border-left: 4px solid #10b981;
+            color: #10b981;
+        }
+
+        .notification.error {
+            border-left: 4px solid #ef4444;
+            color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 200px;
+                border-right: none;
+                border-bottom: 1px solid #e0e6ed;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="panel">
+                <div class="panel-title">Dashboard</div>
+                <div class="form-group">
+                    <label class="label">Name</label>
+                    <input type="text" id="dashboardName" placeholder="Enter dashboard name">
+                </div>
+                <div class="form-group">
+                    <label class="label">Type</label>
+                    <select id="dashboardType">
+                        <option value="custom">Custom</option>
+                        <option value="sales">Sales</option>
+                        <option value="marketing">Marketing</option>
+                        <option value="finance">Finance</option>
+                        <option value="operations">Operations</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Add Widget</div>
+                <div class="form-group">
+                    <button class="btn btn-primary btn-small" onclick="showAddWidgetModal()">
+                        + Add Widget
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Data Sources</div>
+                <div id="dataSourcesList"></div>
+                <button class="btn btn-secondary btn-small" onclick="showDataConnectorModal()" style="width: 100%;">
+                    + New Connector
+                </button>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Queries</div>
+                <div id="queriesList"></div>
+                <button class="btn btn-secondary btn-small" onclick="showQueryModal()" style="width: 100%;">
+                    + New Query
+                </button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1 id="pageTitle">Dashboard Builder</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="saveDashboard()">💾 Save</button>
+                    <button class="btn btn-secondary" onclick="exportDashboard()">📥 Export</button>
+                    <button class="btn btn-secondary" onclick="previewDashboard()">👁️ Preview</button>
+                </div>
+            </div>
+
+            <div class="editor-area">
+                <div class="canvas" id="canvas">
+                    <div class="grid-overlay"></div>
+                    <div class="widgets-container" id="widgetsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Widget Modal -->
+    <div class="modal" id="addWidgetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Widget</h2>
+            </div>
+            <div class="form-group">
+                <label class="label">Widget Type</label>
+                <select id="widgetType">
+                    <option value="chart">Chart</option>
+                    <option value="kpi">KPI</option>
+                    <option value="table">Table</option>
+                    <option value="metric">Metric</option>
+                    <option value="gauge">Gauge</option>
+                    <option value="stat">Stat</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="label">Title</label>
+                <input type="text" id="widgetTitle" placeholder="Widget title">
+            </div>
+            <div class="form-group">
+                <label class="label">Query</label>
+                <select id="widgetQuery">
+                    <option value="">Select a query...</option>
+                </select>
+            </div>
+            <div class="form-group" id="chartTypeGroup" style="display: none;">
+                <label class="label">Chart Type</label>
+                <select id="chartType">
+                    <option value="line">Line</option>
+                    <option value="bar">Bar</option>
+                    <option value="pie">Pie</option>
+                    <option value="area">Area</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('addWidgetModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="addWidget()">Add Widget</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Connector Modal -->
+    <div class="modal" id="dataConnectorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Data Connector</h2>
+            </div>
+            <div class="form-group">
+                <label class="label">Name</label>
+                <input type="text" id="connectorName" placeholder="e.g., Production Database">
+            </div>
+            <div class="form-group">
+                <label class="label">Type</label>
+                <select id="connectorType">
+                    <option value="postgresql">PostgreSQL</option>
+                    <option value="mysql">MySQL</option>
+                    <option value="bigquery">BigQuery</option>
+                    <option value="snowflake">Snowflake</option>
+                    <option value="redshift">Redshift</option>
+                    <option value="api">API</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="label">Host</label>
+                <input type="text" id="connectorHost" placeholder="hostname">
+            </div>
+            <div class="form-group">
+                <label class="label">Port</label>
+                <input type="number" id="connectorPort" placeholder="5432">
+            </div>
+            <div class="form-group">
+                <label class="label">Database</label>
+                <input type="text" id="connectorDatabase" placeholder="database name">
+            </div>
+            <div class="form-group">
+                <label class="label">Username</label>
+                <input type="text" id="connectorUser" placeholder="username">
+            </div>
+            <div class="form-group">
+                <label class="label">Password</label>
+                <input type="password" id="connectorPassword" placeholder="password">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('dataConnectorModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="testConnector()">Test Connection</button>
+                <button class="btn btn-primary" onclick="createConnector()">Create Connector</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Query Modal -->
+    <div class="modal" id="queryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Query</h2>
+            </div>
+            <div class="form-group">
+                <label class="label">Name</label>
+                <input type="text" id="queryName" placeholder="e.g., Total Revenue">
+            </div>
+            <div class="form-group">
+                <label class="label">Data Source</label>
+                <select id="queryConnector">
+                    <option value="">Select a connector...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="label">SQL Query</label>
+                <textarea id="queryText" placeholder="SELECT * FROM table WHERE condition" rows="8"></textarea>
+                <div id="nlSuggestions" style="margin-top: 10px; display: none;">
+                    <small>💡 Suggestions:</small>
+                    <div id="suggestionsList"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('queryModal')">Cancel</button>
+                <button class="btn btn-secondary" onclick="getNLSuggestions()">🤖 Get Suggestions</button>
+                <button class="btn btn-primary" onclick="createQuery()">Create Query</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        const state = {
+            dashboardId: null,
+            dashboardName: 'Untitled Dashboard',
+            dashboardType: 'custom',
+            widgets: [],
+            connectors: [],
+            queries: [],
+            selectedWidget: null,
+            organizationId: 'org-default'
+        };
+
+        const API_BASE = '/api/v1/dashboard';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboards();
+            loadDataConnectors();
+            loadSavedQueries();
+        });
+
+        // ==================== API Calls ====================
+
+        async function apiCall(method, endpoint, data = null) {
+            const url = `${API_BASE}${endpoint}`;
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+                }
+            };
+
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        async function loadDataConnectors() {
+            try {
+                const result = await apiCall('GET', `/${state.organizationId}/connectors`);
+                state.connectors = result.data || [];
+                updateDataSourcesList();
+            } catch (error) {
+                console.error('Failed to load connectors:', error);
+            }
+        }
+
+        async function loadSavedQueries() {
+            try {
+                const result = await apiCall('GET', `/${state.organizationId}/queries`);
+                state.queries = result.data || [];
+                updateQueriesList();
+                updateQuerySelect();
+            } catch (error) {
+                console.error('Failed to load queries:', error);
+            }
+        }
+
+        async function createConnector() {
+            const config = {
+                host: document.getElementById('connectorHost').value,
+                port: parseInt(document.getElementById('connectorPort').value),
+                database: document.getElementById('connectorDatabase').value,
+                user: document.getElementById('connectorUser').value,
+                password: document.getElementById('connectorPassword').value
+            };
+
+            try {
+                const result = await apiCall('POST', `/${state.organizationId}/connectors`, {
+                    name: document.getElementById('connectorName').value,
+                    type: document.getElementById('connectorType').value,
+                    config
+                });
+
+                state.connectors.push(result.data);
+                closeModal('dataConnectorModal');
+                showNotification('Connector created successfully', 'success');
+                updateDataSourcesList();
+                loadSavedQueries();
+            } catch (error) {
+                showNotification('Failed to create connector', 'error');
+            }
+        }
+
+        async function testConnector() {
+            try {
+                showNotification('Testing connection...', 'success');
+                // TODO: Call test endpoint
+            } catch (error) {
+                showNotification('Connection test failed', 'error');
+            }
+        }
+
+        async function createQuery() {
+            try {
+                const result = await apiCall('POST', `/${state.organizationId}/queries`, {
+                    name: document.getElementById('queryName').value,
+                    queryText: document.getElementById('queryText').value,
+                    queryType: 'custom',
+                    parameters: {}
+                });
+
+                state.queries.push(result.data);
+                closeModal('queryModal');
+                showNotification('Query created successfully', 'success');
+                updateQueriesList();
+                updateQuerySelect();
+            } catch (error) {
+                showNotification('Failed to create query', 'error');
+            }
+        }
+
+        async function getNLSuggestions() {
+            const prefix = document.getElementById('queryText').value.substring(0, 50);
+            const connectorId = document.getElementById('queryConnector').value;
+
+            if (!connectorId) {
+                showNotification('Please select a connector first', 'error');
+                return;
+            }
+
+            try {
+                const result = await apiCall('GET', `/${state.organizationId}/connectors/${connectorId}/suggestions?prefix=${encodeURIComponent(prefix)}`);
+                const suggestions = result.data || [];
+
+                const suggestionsList = document.getElementById('suggestionsList');
+                suggestionsList.innerHTML = suggestions.map(s => `
+                    <div class="list-item" onclick="applySuggestion('${s.query.replace(/'/g, "\\'")}')">
+                        <div>
+                            <strong>${s.description}</strong>
+                            <br>
+                            <small>${s.query}</small>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('nlSuggestions').style.display = 'block';
+            } catch (error) {
+                showNotification('Failed to get suggestions', 'error');
+            }
+        }
+
+        function applySuggestion(query) {
+            document.getElementById('queryText').value = query;
+            document.getElementById('nlSuggestions').style.display = 'none';
+        }
+
+        async function saveDashboard() {
+            try {
+                const dashboardData = {
+                    name: document.getElementById('dashboardName').value,
+                    type: document.getElementById('dashboardType').value,
+                    layout: state.widgets
+                };
+
+                if (state.dashboardId) {
+                    await apiCall('PATCH', `/${state.organizationId}/dashboards/${state.dashboardId}`, dashboardData);
+                } else {
+                    const result = await apiCall('POST', `/${state.organizationId}/dashboards`, dashboardData);
+                    state.dashboardId = result.data.id;
+                }
+
+                showNotification('Dashboard saved successfully', 'success');
+            } catch (error) {
+                showNotification('Failed to save dashboard', 'error');
+            }
+        }
+
+        async function exportDashboard() {
+            if (!state.dashboardId) {
+                showNotification('Please save dashboard first', 'error');
+                return;
+            }
+
+            try {
+                const result = await apiCall('POST', `/${state.organizationId}/dashboards/${state.dashboardId}/export`, {
+                    format: 'pdf'
+                });
+
+                showNotification('Dashboard export started', 'success');
+            } catch (error) {
+                showNotification('Failed to export dashboard', 'error');
+            }
+        }
+
+        // ==================== UI Updates ====================
+
+        function updateDataSourcesList() {
+            const list = document.getElementById('dataSourcesList');
+            list.innerHTML = state.connectors.map(c => `
+                <div class="list-item" onclick="selectConnector('${c.id}')">
+                    <div>
+                        <strong>${c.name}</strong>
+                        <br>
+                        <small>${c.type} • ${c.status}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateQueriesList() {
+            const list = document.getElementById('queriesList');
+            list.innerHTML = state.queries.map(q => `
+                <div class="list-item" onclick="selectQuery('${q.id}')">
+                    <div>
+                        <strong>${q.name}</strong>
+                        <br>
+                        <small>${q.queryType}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateQuerySelect() {
+            const select = document.getElementById('widgetQuery');
+            select.innerHTML = '<option value="">Select a query...</option>' + 
+                state.queries.map(q => `<option value="${q.id}">${q.name}</option>`).join('');
+
+            const connectorSelect = document.getElementById('queryConnector');
+            connectorSelect.innerHTML = '<option value="">Select a connector...</option>' + 
+                state.connectors.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        function selectConnector(connectorId) {
+            showNotification(`Selected connector: ${connectorId}`, 'success');
+        }
+
+        function selectQuery(queryId) {
+            const query = state.queries.find(q => q.id === queryId);
+            if (query) {
+                document.getElementById('widgetQuery').value = queryId;
+                showNotification(`Selected query: ${query.name}`, 'success');
+            }
+        }
+
+        // ==================== Widget Management ====================
+
+        function showAddWidgetModal() {
+            document.getElementById('widgetType').onchange = () => {
+                const chartTypeGroup = document.getElementById('chartTypeGroup');
+                chartTypeGroup.style.display = document.getElementById('widgetType').value === 'chart' ? 'block' : 'none';
+            };
+            document.getElementById('addWidgetModal').classList.add('show');
+        }
+
+        function showDataConnectorModal() {
+            document.getElementById('dataConnectorModal').classList.add('show');
+        }
+
+        function showQueryModal() {
+            document.getElementById('queryModal').classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        function addWidget() {
+            const widget = {
+                id: 'widget-' + Date.now(),
+                type: document.getElementById('widgetType').value,
+                title: document.getElementById('widgetTitle').value,
+                queryId: document.getElementById('widgetQuery').value,
+                chartType: document.getElementById('chartType').value,
+                position: { x: 20, y: 20 + (state.widgets.length * 40), w: 4, h: 3 }
+            };
+
+            state.widgets.push(widget);
+            renderWidget(widget);
+            closeModal('addWidgetModal');
+            showNotification('Widget added', 'success');
+        }
+
+        function renderWidget(widget) {
+            const container = document.getElementById('widgetsContainer');
+            const widgetEl = document.createElement('div');
+            widgetEl.id = widget.id;
+            widgetEl.className = 'widget';
+            widgetEl.style.left = (widget.position.x * 50) + 'px';
+            widgetEl.style.top = (widget.position.y * 50) + 'px';
+            widgetEl.style.width = (widget.position.w * 50) + 'px';
+            widgetEl.style.height = (widget.position.h * 50) + 'px';
+
+            let content = `<div class="widget-header">
+                <div class="widget-title">${widget.title}</div>
+                <div class="widget-actions">
+                    <button class="btn-icon" onclick="editWidget('${widget.id}')">✏️</button>
+                    <button class="btn-icon" onclick="deleteWidget('${widget.id}')">🗑️</button>
+                </div>
+            </div>`;
+
+            if (widget.type === 'kpi') {
+                content += '<div class="kpi-tile"><div class="kpi-value">-</div><div class="kpi-label">Loading...</div></div>';
+            } else if (widget.type === 'chart') {
+                content += '<div class="chart-container"><canvas id="chart-' + widget.id + '"></canvas></div>';
+            } else {
+                content += '<div style="color: #999; text-align: center; padding: 20px;">Widget content</div>';
+            }
+
+            widgetEl.innerHTML = content;
+            container.appendChild(widgetEl);
+
+            // Make widget draggable
+            makeWidgetDraggable(widgetEl);
+        }
+
+        function makeWidgetDraggable(element) {
+            let x = 0, y = 0, initialX = 0, initialY = 0;
+
+            element.addEventListener('mousedown', (e) => {
+                initialX = e.clientX - element.offsetLeft;
+                initialY = e.clientY - element.offsetTop;
+                element.style.zIndex = 1000;
+
+                const mouseMoveHandler = (e) => {
+                    x = e.clientX - initialX;
+                    y = e.clientY - initialY;
+                    element.style.left = x + 'px';
+                    element.style.top = y + 'px';
+                };
+
+                const mouseUpHandler = () => {
+                    document.removeEventListener('mousemove', mouseMoveHandler);
+                    document.removeEventListener('mouseup', mouseUpHandler);
+                    element.style.zIndex = 'auto';
+                };
+
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+            });
+        }
+
+        function editWidget(widgetId) {
+            showNotification('Edit widget: ' + widgetId, 'success');
+        }
+
+        function deleteWidget(widgetId) {
+            const index = state.widgets.findIndex(w => w.id === widgetId);
+            if (index > -1) {
+                state.widgets.splice(index, 1);
+            }
+            document.getElementById(widgetId).remove();
+            showNotification('Widget removed', 'success');
+        }
+
+        function previewDashboard() {
+            showNotification('Dashboard preview', 'success');
+        }
+
+        // ==================== Utilities ====================
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        window.closeModal = closeModal;
+        window.showAddWidgetModal = showAddWidgetModal;
+        window.showDataConnectorModal = showDataConnectorModal;
+        window.showQueryModal = showQueryModal;
+        window.addWidget = addWidget;
+        window.createConnector = createConnector;
+        window.testConnector = testConnector;
+        window.createQuery = createQuery;
+        window.getNLSuggestions = getNLSuggestions;
+        window.applySuggestion = applySuggestion;
+        window.saveDashboard = saveDashboard;
+        window.exportDashboard = exportDashboard;
+        window.selectConnector = selectConnector;
+        window.selectQuery = selectQuery;
+        window.editWidget = editWidget;
+        window.deleteWidget = deleteWidget;
+        window.previewDashboard = previewDashboard;
+    </script>
+</body>
+</html>

@@ -1,141 +1,109 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { dashboardController } from '../controllers/dashboard.controller';
-import { authenticate, authorize, facilityScope } from '../middleware/auth';
-import { hipaaCompliance } from '../middleware/hipaa';
-import { enhancedRBAC, dataExportRestrictions } from '../middleware/rbac';
-import { Permission, UserRole } from '../types';
+import { authMiddleware } from '../middleware/auth';
 
-const router = Router();
+const router: Router = Router();
 
-// Apply authentication and HIPAA middleware to all routes
-router.use(authenticate);
-router.use(hipaaCompliance);
-router.use(facilityScope);
+// Apply authentication middleware
+router.use(authMiddleware);
 
-// Dashboard data endpoints
-router.get(
-  '/',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getDashboardData.bind(dashboardController)
+// ==================== Dashboards ====================
+router.get('/:organizationId/dashboards', (req: Request, res: Response) => 
+  dashboardController.listDashboards(req as any, res)
 );
 
-// Pipeline dashboard
-router.get(
-  '/pipeline',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getDashboardData.bind(dashboardController)
+router.post('/:organizationId/dashboards', (req: Request, res: Response) => 
+  dashboardController.createDashboard(req as any, res)
 );
 
-// Revenue dashboard
-router.get(
-  '/revenue',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getDashboardData.bind(dashboardController)
+router.get('/:organizationId/dashboards/:dashboardId', (req: Request, res: Response) => 
+  dashboardController.getDashboard(req as any, res)
 );
 
-// Compliance dashboard
-router.get(
-  '/compliance',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getDashboardData.bind(dashboardController)
+router.patch('/:organizationId/dashboards/:dashboardId', (req: Request, res: Response) => 
+  dashboardController.updateDashboard(req as any, res)
 );
 
-// Outreach dashboard
-router.get(
-  '/outreach',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getDashboardData.bind(dashboardController)
+router.delete('/:organizationId/dashboards/:dashboardId', (req: Request, res: Response) => 
+  dashboardController.deleteDashboard(req as any, res)
 );
 
-// Combined dashboard
-router.get(
-  '/combined',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getDashboardData.bind(dashboardController)
+// ==================== Dashboard Widgets ====================
+router.post('/:organizationId/dashboards/:dashboardId/widgets', (req: Request, res: Response) => 
+  dashboardController.addWidget(req as any, res)
 );
 
-// Saved Views endpoints
-router.get(
-  '/views',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getSavedViews.bind(dashboardController)
+router.patch('/:organizationId/dashboards/widgets/:widgetId', (req: Request, res: Response) => 
+  dashboardController.updateWidget(req as any, res)
 );
 
-router.post(
-  '/views',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.MANAGE_ANALYTICS]),
-  dashboardController.createSavedView.bind(dashboardController)
+router.delete('/:organizationId/dashboards/widgets/:widgetId', (req: Request, res: Response) => 
+  dashboardController.removeWidget(req as any, res)
 );
 
-router.put(
-  '/views/:id',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.MANAGE_ANALYTICS]),
-  dashboardController.updateSavedView.bind(dashboardController)
+// ==================== Dashboard Filters ====================
+router.post('/:organizationId/dashboards/:dashboardId/filters', (req: Request, res: Response) => 
+  dashboardController.addFilter(req as any, res)
 );
 
-router.delete(
-  '/views/:id',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.MANAGE_ANALYTICS]),
-  dashboardController.deleteSavedView.bind(dashboardController)
+router.delete('/:organizationId/dashboards/filters/:filterId', (req: Request, res: Response) => 
+  dashboardController.removeFilter(req as any, res)
 );
 
-// Drilldown configurations
-router.get(
-  '/drilldowns',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.VIEW_FACILITY_ANALYTICS]),
-  dashboardController.getDrilldownConfigs.bind(dashboardController)
+// ==================== Data Connectors ====================
+router.get('/:organizationId/connectors', (req: Request, res: Response) => 
+  dashboardController.listDataConnectors(req as any, res)
 );
 
-router.post(
-  '/drilldowns',
-  enhancedRBAC([Permission.VIEW_ANALYTICS, Permission.MANAGE_ANALYTICS]),
-  dashboardController.createDrilldownConfig.bind(dashboardController)
+router.post('/:organizationId/connectors', (req: Request, res: Response) => 
+  dashboardController.createDataConnector(req as any, res)
 );
 
-// Export endpoints
-router.post(
-  '/export',
-  dataExportRestrictions,
-  enhancedRBAC([Permission.EXPORT_DATA]),
-  dashboardController.createExportJob.bind(dashboardController)
+router.get('/:organizationId/connectors/:connectorId', (req: Request, res: Response) => 
+  dashboardController.getDataConnector(req as any, res)
 );
 
-router.get(
-  '/export/jobs',
-  enhancedRBAC([Permission.EXPORT_DATA]),
-  dashboardController.getExportJobs.bind(dashboardController)
+router.patch('/:organizationId/connectors/:connectorId', (req: Request, res: Response) => 
+  dashboardController.updateDataConnector(req as any, res)
 );
 
-router.get(
-  '/export/jobs/:jobId',
-  enhancedRBAC([Permission.EXPORT_DATA]),
-  dashboardController.getExportJob.bind(dashboardController)
+router.delete('/:organizationId/connectors/:connectorId', (req: Request, res: Response) => 
+  dashboardController.deleteDataConnector(req as any, res)
 );
 
-router.get(
-  '/export/download/:jobId',
-  enhancedRBAC([Permission.EXPORT_DATA]),
-  dashboardController.downloadExport.bind(dashboardController)
+router.post('/:organizationId/connectors/:connectorId/test', (req: Request, res: Response) => 
+  dashboardController.testDataConnector(req as any, res)
 );
 
-// Admin-only endpoints
-router.use((req, res, next) => {
-  if (!req.user || req.user.role !== UserRole.ADMIN) {
-    res.status(403).json({ error: 'Admin access required' });
-    return;
-  }
-  next();
-});
-
-// Admin dashboard management
-router.get(
-  '/admin/views/all',
-  dashboardController.getSavedViews.bind(dashboardController)
+router.get('/:organizationId/connectors/:connectorId/schema', (req: Request, res: Response) => 
+  dashboardController.getConnectorSchema(req as any, res)
 );
 
-router.get(
-  '/admin/export/all',
-  dashboardController.getExportJobs.bind(dashboardController)
+// ==================== Saved Queries ====================
+router.get('/:organizationId/queries', (req: Request, res: Response) => 
+  dashboardController.listSavedQueries(req as any, res)
+);
+
+router.post('/:organizationId/queries', (req: Request, res: Response) => 
+  dashboardController.createSavedQuery(req as any, res)
+);
+
+router.post('/:organizationId/queries/:queryId/execute', (req: Request, res: Response) => 
+  dashboardController.executeQuery(req as any, res)
+);
+
+// ==================== NL Suggestions ====================
+router.get('/:organizationId/connectors/:connectorId/suggestions', (req: Request, res: Response) => 
+  dashboardController.getNLSuggestions(req as any, res)
+);
+
+// ==================== Dashboard Exports ====================
+router.post('/:organizationId/dashboards/:dashboardId/export', (req: Request, res: Response) => 
+  dashboardController.exportDashboard(req as any, res)
+);
+
+router.get('/:organizationId/exports/:exportId', (req: Request, res: Response) => 
+  dashboardController.getExportStatus(req as any, res)
 );
 
 export default router;

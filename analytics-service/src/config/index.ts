@@ -34,15 +34,6 @@ const config: AppConfig = {
     url: process.env.ML_SERVICE_URL || 'http://localhost:8000',
     timeout: parseInt(process.env.ML_SERVICE_TIMEOUT || '30000'),
   },
-  kafka: {
-    brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
-    ssl: process.env.KAFKA_SSL === 'true',
-    sasl: process.env.KAFKA_SASL_MECHANISM ? {
-      mechanism: process.env.KAFKA_SASL_MECHANISM,
-      username: process.env.KAFKA_SASL_USERNAME,
-      password: process.env.KAFKA_SASL_PASSWORD,
-    } : undefined,
-  },
   governance: {
     auditLog: {
       enabled: process.env.AUDIT_LOG_ENABLED !== 'false',
@@ -129,6 +120,9 @@ const config: AppConfig = {
       retention: parseInt(process.env.METRIC_VERSION_RETENTION || '10'),
     },
   },
+  port: parseInt(process.env.PORT || '3000'),
+  apiVersion: process.env.API_VERSION || 'v1',
+  nodeEnv: process.env.NODE_ENV || 'development',
 };
 
 export default config;

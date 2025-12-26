@@ -4,7 +4,7 @@ import { authenticate, authorize, facilityScope } from '../middleware/auth';
 import { hipaaCompliance } from '../middleware/hipaa';
 import { Permission } from '../types';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply authentication and HIPAA middleware to all routes
 router.use(authenticate);
