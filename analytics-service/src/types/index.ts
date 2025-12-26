@@ -9,7 +9,7 @@ export interface User {
 export enum UserRole {
   ADMIN = 'admin',
   RECRUITER = 'recruiter',
-  VIEWER = 'viewer',
+  VIEWER = 'viewer'
 }
 
 export enum Permission {
@@ -20,7 +20,7 @@ export enum Permission {
   VIEW_AUDIT_LOGS = 'view_audit_logs',
   MANAGE_GOVERNANCE = 'manage_governance',
   EXPORT_DATA = 'export_data',
-  VIEW_VERSIONED_METRICS = 'view_versioned_metrics',
+  VIEW_VERSIONED_METRICS = 'view_versioned_metrics'
 }
 
 export interface AnalyticsKPI {
@@ -146,7 +146,7 @@ export interface AppConfig {
 export enum ForecastModel {
   PROPHET = 'prophet',
   ARIMA = 'arima',
-  XGBOOST = 'xgboost',
+  XGBOOST = 'xgboost'
 }
 
 export enum ForecastMetric {
@@ -154,7 +154,7 @@ export enum ForecastMetric {
   PIPELINE_COUNT = 'pipeline_count',
   TIME_TO_FILL = 'time_to_fill',
   COMPLIANCE_RATE = 'compliance_rate',
-  OUTREACH_RESPONSE_RATE = 'outreach_response_rate',
+  OUTREACH_RESPONSE_RATE = 'outreach_response_rate'
 }
 
 export interface ForecastRequest {
@@ -376,4 +376,67 @@ export interface SecurityContext {
   auditRequired: boolean;
   piiAccess: boolean;
   facilityScope?: string;
+}
+
+// Data Source and Connector types
+export enum DataSourceType {
+  POSTGRES = 'postgres',
+  CSV = 'csv',
+  S3_PARQUET = 's3_parquet',
+}
+
+export enum DataType {
+  STRING = 'string',
+  INTEGER = 'integer',
+  FLOAT = 'float',
+  BOOLEAN = 'boolean',
+  DATE = 'date',
+  TIMESTAMP = 'timestamp',
+  UNKNOWN = 'unknown',
+}
+
+export interface ColumnMetadata {
+  name: string;
+  type: DataType;
+  nullable: boolean;
+  sample?: any;
+  description?: string;
+}
+
+export interface ColumnProfile {
+  name: string;
+  type: DataType;
+  nullCount: number;
+  uniqueCount: number;
+  sampleValues: any[];
+  minLength?: number;
+  maxLength?: number;
+  avgLength?: number;
+  minValue?: any;
+  maxValue?: any;
+  mostCommon?: any;
+}
+
+export interface SchemaMetadata {
+  table?: string;
+  path?: string;
+  columns: ColumnMetadata[];
+  rowCount?: number;
+  sizeBytes?: number;
+  createdAt?: Date;
+  lastModified?: Date;
+}
+
+export interface DataSource {
+  id: string;
+  name: string;
+  type: DataSourceType;
+  enabled: boolean;
+  config: Record<string, any>;
+  schema?: SchemaMetadata;
+  columnProfiles?: ColumnProfile[];
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  facilityId?: string;
 }

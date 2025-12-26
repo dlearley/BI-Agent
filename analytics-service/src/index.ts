@@ -17,9 +17,7 @@ import analyticsRoutes from './routes/analytics';
 import forecastRoutes from './routes/forecast';
 import insightsRoutes from './routes/insights';
 import governanceRoutes from './routes/governance';
-import authRoutes from './routes/auth';
-import orgsRoutes from './routes/orgs';
-import teamsRoutes from './routes/teams';
+import datasourcesRoutes from './routes/datasources';
 import config from './config';
 
 const app: express.Application = express();
@@ -27,12 +25,10 @@ const app: express.Application = express();
 // Security middleware
 app.use(helmet());
 app.use(compression());
-app.use(
-  cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  credentials: true,
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -47,7 +43,10 @@ app.use((req, res, next) => {
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    const [dbHealth, redisHealth] = await Promise.all([db.healthCheck(), redis.healthCheck()]);
+    const [dbHealth, redisHealth] = await Promise.all([
+      db.healthCheck(),
+      redis.healthCheck(),
+    ]);
 
     res.json({
       status: dbHealth && redisHealth ? 'healthy' : 'unhealthy',
@@ -68,11 +67,9 @@ app.get('/health', async (req, res) => {
 
 // API routes
 const apiVersion = config.apiVersion || 'v1';
-app.use(`/api/${apiVersion}/auth`, authRoutes);
-app.use(`/api/${apiVersion}/orgs`, orgsRoutes);
-app.use(`/api/${apiVersion}/teams`, teamsRoutes);
 app.use(`/api/${apiVersion}/analytics`, analyticsRoutes);
 app.use(`/api/${apiVersion}/forecast`, forecastRoutes);
+app.use(`/api/${apiVersion}/datasources`, datasourcesRoutes);
 
 // Serve static files for the forecast UI
 app.use('/js', express.static(path.join(__dirname, '../public/js')));
@@ -92,7 +89,7 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Unhandled error:', err);
-
+  
   res.status(err.status || 500).json({
     error: 'Internal Server Error',
     message: config.nodeEnv === 'development' ? err.message : 'Something went wrong',
@@ -130,20 +127,20 @@ async function startServer(): Promise<void> {
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
-
+      
       server.close(async () => {
         console.log('📡 HTTP server closed');
-
+        
         try {
           await queueService.close();
           console.log('📋 Queue service closed');
-
+          
           await redis.close();
           console.log('🔴 Redis connection closed');
-
+          
           await db.close();
           console.log('🗄️ Database connection closed');
-
+          
           console.log('✅ Graceful shutdown complete');
           process.exit(0);
         } catch (error) {
@@ -158,7 +155,7 @@ async function startServer(): Promise<void> {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
     // Handle uncaught exceptions
-    process.on('uncaughtException', error => {
+    process.on('uncaughtException', (error) => {
       console.error('💥 Uncaught Exception:', error);
       gracefulShutdown('uncaughtException');
     });
@@ -167,6 +164,7 @@ async function startServer(): Promise<void> {
       console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
       gracefulShutdown('unhandledRejection');
     });
+
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
