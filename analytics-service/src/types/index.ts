@@ -378,65 +378,130 @@ export interface SecurityContext {
   facilityScope?: string;
 }
 
-// Data Source and Connector types
-export enum DataSourceType {
-  POSTGRES = 'postgres',
-  CSV = 'csv',
-  S3_PARQUET = 's3_parquet',
+// Catalog types
+export interface ColumnStats {
+  null_count: number;
+  distinct_count: number;
+  min_value?: string | number;
+  max_value?: string | number;
+  avg_value?: number;
+  median_value?: number;
+  std_dev?: number;
+  sample_values?: (string | number)[];
+  data_type: string;
+  precision?: number;
+  scale?: number;
 }
 
-export enum DataType {
-  STRING = 'string',
-  INTEGER = 'integer',
-  FLOAT = 'float',
-  BOOLEAN = 'boolean',
-  DATE = 'date',
-  TIMESTAMP = 'timestamp',
-  UNKNOWN = 'unknown',
+export enum PIIType {
+  EMAIL = 'email',
+  PHONE = 'phone',
+  SSN = 'ssn',
+  CREDIT_CARD = 'credit_card',
+  NAME = 'name',
+  ADDRESS = 'address',
+  DATE_OF_BIRTH = 'date_of_birth',
+  DRIVER_LICENSE = 'driver_license',
+  PASSPORT = 'passport',
+  HEALTH_ID = 'health_id',
+  MEDICAL_RECORD = 'medical_record',
+  UNKNOWN = 'unknown'
+}
+
+export interface PIIDetectionResult {
+  is_pii: boolean;
+  pii_type?: PIIType;
+  confidence: number;
+  pattern_matched?: string;
+}
+
+export interface Column {
+  id: string;
+  dataset_id: string;
+  column_name: string;
+  column_type: string;
+  description?: string;
+  is_nullable: boolean;
+  stats_json: ColumnStats;
+  is_pii: boolean;
+  pii_type?: PIIType;
+  pii_confidence?: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface Dataset {
+  id: string;
+  organization_id: string;
+  connector_id: string;
+  name: string;
+  schema_name?: string;
+  table_name: string;
+  description?: string;
+  row_count: number;
+  stats_json: Record<string, any>;
+  freshness_sla_hours: number;
+  last_discovered_at?: Date;
+  last_profiled_at?: Date;
+  created_at: Date;
+  updated_at: Date;
+  created_by?: string;
+  columns?: Column[];
+}
+
+export interface ColumnLineage {
+  id: string;
+  organization_id: string;
+  source_column_id: string;
+  target_column_id?: string;
+  source_table: string;
+  target_table: string;
+  lineage_type: 'upstream' | 'downstream' | 'sibling';
+  description?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface SchemaMetadata {
+  name: string;
+  tables: TableMetadata[];
+  createdAt: string;
+}
+
+export interface TableMetadata {
+  name: string;
+  schema: string;
+  rowCount: number;
+  columns: ColumnMetadata[];
+  freshnessSLA?: number;
+  lastProfiledAt?: string;
 }
 
 export interface ColumnMetadata {
   name: string;
-  type: DataType;
+  type: string;
   nullable: boolean;
-  sample?: any;
-  description?: string;
+  isPII: boolean;
+  piiType?: PIIType;
+  piiConfidence?: number;
+  stats?: ColumnStats;
 }
 
-export interface ColumnProfile {
-  name: string;
-  type: DataType;
-  nullCount: number;
-  uniqueCount: number;
-  sampleValues: any[];
-  minLength?: number;
-  maxLength?: number;
-  avgLength?: number;
-  minValue?: any;
-  maxValue?: any;
-  mostCommon?: any;
+export interface DiscoveryRequest {
+  connector_id: string;
+  schema_names?: string[];
+  table_patterns?: string[];
 }
 
-export interface SchemaMetadata {
-  table?: string;
-  path?: string;
-  columns: ColumnMetadata[];
-  rowCount?: number;
-  sizeBytes?: number;
-  createdAt?: Date;
-  lastModified?: Date;
+export interface ProfileRequest {
+  dataset_ids: string[];
+  include_pii_detection?: boolean;
 }
 
-export interface DataSource {
-  id: string;
-  name: string;
-  type: DataSourceType;
-  enabled: boolean;
-  config: Record<string, any>;
-  schema?: SchemaMetadata;
-  columnProfiles?: ColumnProfile[];
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;
-  facilityId?: string;
+export interface FreshnessInfo {
+  table_name: string;
+  sla_hours: number;
+  last_updated: Date;
+  age_hours: number;
+  is_fresh: boolean;
 }
