@@ -10,81 +10,58 @@ This repository contains the full analytics/business intelligence stack that was
 
 ```
 bi-agent/
-├── analytics-service/     # Main analytics API service (Node.js/Express)
+├── analytics-service/     # Main analytics API service
 │   ├── src/              # TypeScript source code
 │   ├── package.json      # Service dependencies
 │   ├── Dockerfile        # Container configuration
-│   ├── docker-compose.yml # Service composition (analytics only)
-│   └── logs/             # Application logs
-├── ml-service/           # ML Service (FastAPI/Python)
-│   ├── main.py           # FastAPI application
-│   ├── Dockerfile        # Container configuration
-│   ├── requirements.txt   # Python dependencies
-│   └── logs/             # Service logs
-├── web/                  # Web Frontend (Next.js/React)
-│   ├── pages/            # Next.js pages
-│   ├── Dockerfile        # Container configuration
-│   ├── package.json      # Dependencies
-│   └── next.config.js    # Next.js configuration
-├── celery-service/       # Background Jobs (Python/Celery)
-│   ├── tasks.py          # Task definitions
-│   ├── config.py         # Celery configuration
-│   ├── Dockerfile        # Container configuration
-│   ├── requirements.txt   # Python dependencies
-│   └── logs/             # Task logs
-├── dbt/                  # dbt Analytics Project
+│   └── docker-compose.yml
+├── apps/worker/           # Celery worker for background tasks
+│   ├── tasks/            # Celery task implementations
+│   ├── utils/            # Utility modules
+│   ├── requirements.txt  # Python dependencies
+│   ├── workerctl.sh     # Worker management script
+│   └── docker-compose.yml
+├── dbt/                  # dbt analytics project
 │   ├── models/           # Analytics models
 │   ├── macros/           # Custom dbt macros
 │   └── dbt_project.yml   # dbt configuration
-├── observability/        # Observability Stack Configuration
-│   ├── otel-collector-config.yml  # OpenTelemetry configuration
-│   ├── prometheus.yml    # Prometheus configuration
-│   └── grafana/          # Grafana dashboards and provisioning
-├── jobs/                 # Background Jobs and Setup Scripts
+├── jobs/                 # Background jobs and scripts
 │   ├── refresh/          # SQL refresh scripts
 │   └── setup.sh          # Environment setup
-├── scripts/              # Utility Scripts
-│   ├── setup-local-env.sh    # Local environment setup
-│   ├── health-check.sh       # Service health verification
-│   ├── bootstrap-db.sh       # Database bootstrap
-│   └── init-pgvector.sql     # pgvector initialization
-├── docker-compose.yml    # Complete stack orchestration
-├── .env.example          # Environment configuration template
-├── DOCKER_COMPOSE.md     # Docker Compose documentation
-├── package.json          # Workspace configuration
-└── README.md             # This file
+└── package.json          # Workspace configuration
 ```
 
 ## Features
 
-- **PostgreSQL 15 Analytics**: Materialized views and standard views for KPI calculations with pgvector
+- **PostgreSQL Analytics**: Materialized views and standard views for KPI calculations
 - **REST API**: Express.js API with role-based access control (RBAC)
-- **ML Service**: FastAPI-based machine learning service for predictions and model training
-- **Web Frontend**: Next.js web interface for dashboard and analytics visualization
-- **Background Jobs**: Celery workers and scheduler for async task processing
-- **S3-Compatible Storage**: MinIO for storing models, datasets, and logs
 - **Redis Caching**: Intelligent caching for improved performance
-- **BullMQ Jobs**: Scheduled and manual refresh strategies
+- **BullMQ Jobs**: Scheduled and manual refresh strategies (Node.js)
+- **Celery Workers**: Python-based background processing with advanced scheduling
 - **HIPAA Compliance**: PII redaction and minimum threshold enforcement
 - **OpenTelemetry Observability**: Tracing, metrics, and dashboards with Jaeger, Prometheus, and Grafana
 - **dbt Integration**: Transformations with dbt for analytics engineering
+- **Task Scheduling**: Comprehensive Celery beat scheduler for automated tasks
+- **Alert System**: Multi-channel alerting (email, webhook, Slack)
+- **Report Generation**: Automated report generation and delivery
+- **Circuit Breakers**: Protection against cascading failures
+- **Prometheus Metrics**: Comprehensive metrics collection and monitoring
 - **TypeScript**: Full type safety throughout the application
-- **Docker Compose Orchestration**: Complete stack with all services in one command
 
 ## Architecture
 
 ### Core Components
 
-1. **Analytics Service** (`analytics-service/`): Main API service for analytics endpoints (Node.js/Express)
-2. **ML Service** (`ml-service/`): Machine learning service for predictions and training (FastAPI)
-3. **Web Frontend** (`web/`): User interface for dashboards and analytics (Next.js)
-4. **Database Layer**: PostgreSQL 15 with pgvector for vector embeddings and materialized views for KPIs
-5. **Cache Layer**: Redis for performance optimization and job queue
-6. **Object Storage**: MinIO for S3-compatible storage of models, datasets, and logs
-7. **Background Jobs**: Celery workers and beat scheduler for async task processing
-8. **Analytics Engine**: dbt for data transformations
-9. **Refresh Jobs**: Automated and manual data refresh strategies
-10. **Observability Stack**: OpenTelemetry collector, Jaeger for tracing, Prometheus for metrics, and Grafana for visualization
+1. **Analytics Service** (`analytics-service/`): Main API service for analytics endpoints
+2. **Celery Worker** (`apps/worker/`): Python-based background task processing
+3. **Database Layer**: PostgreSQL with materialized views for KPIs
+4. **Cache Layer**: Redis for performance optimization
+5. **Job Queue**: BullMQ (Node.js) and Celery (Python) for background processing
+6. **Analytics Engine**: dbt for data transformations
+7. **Refresh Jobs**: Automated and manual data refresh strategies
+8. **Alert System**: Multi-channel alerting and threshold monitoring
+9. **Report Engine**: Automated report generation and delivery
+10. **Observability Stack**: OpenTelemetry, Jaeger, Prometheus, and Grafana
 
 ### KPIs Provided
 
@@ -172,7 +149,7 @@ Authorization: Bearer <your-jwt-token>
 #### Analytics KPIs
 
 - `GET /api/v1/analytics/pipeline` - Pipeline metrics
-- `GET /api/v1/analytics/compliance` - Compliance metrics
+- `GET /api/v1/analytics/compliance` - Compliance metrics  
 - `GET /api/v1/analytics/revenue` - Revenue metrics
 - `GET /api/v1/analytics/outreach` - Outreach metrics
 - `GET /api/v1/analytics/kpis` - Combined KPIs
@@ -235,7 +212,47 @@ pnpm analytics:docs
 
 ## Job Management
 
-### Manual Refresh
+### Celery Worker (Python)
+
+The Celery worker handles background tasks including query refreshes, dbt runs, alerts, and reports.
+
+```bash
+# Setup Celery worker environment
+npm run worker:setup
+
+# Start all Celery services
+npm run worker:start
+
+# Stop all Celery services
+npm run worker:stop
+
+# Restart all Celery services
+npm run worker:restart
+
+# Check worker status
+npm run worker:status
+
+# Run database migrations for worker tables
+npm run worker:migrate
+
+# Start with Docker
+npm run docker:worker
+
+# Stop Docker services
+npm run docker:worker:down
+```
+
+#### Worker Services
+
+- **Analytics Worker**: Catalog refreshes, materialized view updates
+- **dbt Worker**: dbt model runs, tests, documentation generation
+- **Alerts Worker**: Alert processing, threshold monitoring, notifications
+- **Reports Worker**: Report generation and delivery
+- **Beat Scheduler**: Task scheduling and automation
+- **Flower Monitoring**: Real-time task monitoring at http://localhost:5555
+- **Metrics Server**: Prometheus metrics at http://localhost:8000
+
+### Manual Refresh (Node.js)
 
 ```bash
 # Refresh all analytics
@@ -274,76 +291,8 @@ pnpm test:coverage
 
 ## Docker Support
 
-### Full Stack Orchestration
-
-The project includes a comprehensive Docker Compose stack that orchestrates all services:
-
 ```bash
-# Setup local environment
-./scripts/setup-local-env.sh
-
-# Start all services
-docker-compose up -d
-
-# Check service health
-./scripts/health-check.sh
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-### Services Included
-
-- **PostgreSQL 15** with pgvector extension for vector embeddings
-- **Redis** for caching and job queue
-- **MinIO** S3-compatible object storage
-- **Analytics API** (Node.js/Express)
-- **ML Service** (FastAPI) for predictions and model training
-- **Web Frontend** (Next.js)
-- **Celery Worker & Beat** for background jobs and scheduling
-- **Prometheus** for metrics collection
-- **Grafana** for visualization (http://localhost:3002)
-- **Jaeger** for distributed tracing (http://localhost:16686)
-- **OpenTelemetry Collector** for telemetry aggregation
-
-### Quick Access
-
-After `docker-compose up -d`:
-
-- **Analytics API**: http://localhost:3000
-- **Web UI**: http://localhost:3001
-- **ML Service**: http://localhost:8000
-- **Grafana Dashboards**: http://localhost:3002 (admin/admin)
-- **Jaeger Tracing**: http://localhost:16686
-- **Prometheus**: http://localhost:9090
-- **MinIO Console**: http://localhost:9001 (minioadmin/minioadmin)
-
-### Configuration
-
-Edit `.env` file before running `docker-compose up`:
-
-```bash
-# Database
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=analytics_db
-
-# Analytics
-JWT_SECRET=your-secret-key
-
-# Observability
-GRAFANA_PASSWORD=admin
-```
-
-For detailed Docker Compose documentation, see [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md).
-
-### Analytics Service Docker
-
-```bash
-# Build and start individual analytics service
+# Build and start all services
 cd analytics-service
 pnpm docker:up
 
@@ -422,7 +371,6 @@ This repository was created by migrating the analytics stack from the NurseHR re
 - HIPAA compliance features
 
 The original development was tracked in the NurseHR repository under:
-
 - Branch: `feature/analytics-backend-views-api-rbac-hipaa-refresh-dbt-redis`
 - Task: `analytics-backend-views-api`
 
@@ -433,7 +381,6 @@ The original development was tracked in the NurseHR repository under:
 ## Support
 
 For support and questions:
-
 - Create an issue in the repository
 - Check the documentation
 - Review the test cases for usage examples
